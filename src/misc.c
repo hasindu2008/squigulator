@@ -2,7 +2,6 @@
 **
 ** @@
 ******************************************************************************/
-#define _XOPEN_SOURCE 700
 #include "sigsim.h"
 #include "misc.h"
 #include "error.h"

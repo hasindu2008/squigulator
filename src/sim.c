@@ -3,7 +3,6 @@
 **
 ** @@
 ******************************************************************************/
-#define _XOPEN_SOURCE 700
 #include <assert.h>
 #include <getopt.h>
 #include <stdio.h>
@@ -23,7 +22,6 @@ typedef struct{
     int num_ref;
     int64_t sum;
 } ref_t;
-
 
 typedef struct{
     double m;
@@ -54,8 +52,13 @@ profile_t minion_r9_dna_prof = {
     .digitisation = 8192,
     .sample_rate = 4000,
     //.bases_per_second = 450,
-    .range = 1402.882324
-    //todo get minion vals
+    .range = 1443.030273,
+    .offset_mean=13.7222605,
+    .offset_std=10.25279688,
+    .median_before_mean=200.815801,
+    .median_before_std=20.48933762,
+    .drift_mean=9.0, //todo get this from hiruna //this must be sample_rate/bases_per_second for now
+    .drift_std=1.0 //todo get this from hiruna
 };
 profile_t prom_r9_dna_prof = {
     .digitisation = 2048,
@@ -70,23 +73,28 @@ profile_t prom_r9_dna_prof = {
     .drift_std=1.0 //todo get this from hiruna
 };
 profile_t minion_r9_rna_prof = {
-    .digitisation = 2048,
-    .sample_rate = 4000,
-    //.bases_per_second = 450,
-    .range = 748.5801,
-    .offset_mean=-237.4102,
-    .offset_std=14.1575,
-    .median_before_mean=214.2890337,
-    .median_before_std=18.0127916,
-    .drift_mean=9.0, //todo get this from hiruna //this must be sample_rate/bases_per_second for now
-    .drift_std=1.0 //todo get this from hiruna
+    .digitisation = 8192,
+    .sample_rate = 3012,
+    //.bases_per_second = 70,
+    .range = 1126.47,
+    .offset_mean=4.65491888,
+    .offset_std=4.115262472,
+    .median_before_mean=242.6584118,
+    .median_before_std=10.60230888,
+    .drift_mean=43.0, //todo get this from hiruna //this must be sample_rate/bases_per_second for now
+    .drift_std=5.0 //todo get this from hiruna
 };
 profile_t prom_r9_rna_prof = {
-    .digitisation = 8192,
-    .sample_rate = 4000,
-    //.bases_per_second = 450,
-    .range = 1402.882324
-    //todo get minion vals
+    .digitisation = 2048,
+    .sample_rate = 3000,
+    //.bases_per_second = 70,
+    .range = 548.788269,
+    .offset_mean=-231.9440589,
+    .offset_std=12.87185278,
+    .median_before_mean=238.5286796,
+    .median_before_std=21.1871794,
+    .drift_mean=43.0, //todo get this from hiruna //this must be sample_rate/bases_per_second for now
+    .drift_std=5.0 //todo get this from hiruna
 };
 
 //todo RNA profiles

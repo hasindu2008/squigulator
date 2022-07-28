@@ -1,7 +1,6 @@
 /* @file main.c
 **
 ******************************************************************************/
-#define _XOPEN_SOURCE 700
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>

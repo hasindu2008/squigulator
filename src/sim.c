@@ -40,7 +40,7 @@ typedef struct{
 typedef struct {
     double digitisation;
     double sample_rate;
-    double bases_per_second;
+    //double bases_per_second;
     double range;
     double offset_mean;
     double offset_std;
@@ -53,20 +53,20 @@ typedef struct {
 profile_t minion_r9_dna_prof = {
     .digitisation = 8192,
     .sample_rate = 4000,
-    .bases_per_second = 450,
+    //.bases_per_second = 450,
     .range = 1402.882324
     //todo get minion vals
 };
 profile_t prom_r9_dna_prof = {
     .digitisation = 2048,
     .sample_rate = 4000,
-    .bases_per_second = 450,
+    //.bases_per_second = 450,
     .range = 748.5801,
     .offset_mean=-237.4102,
     .offset_std=14.1575,
     .median_before_mean=214.2890337,
     .median_before_std=18.0127916,
-    .drift_mean=9.0, //todo get this from hiruna
+    .drift_mean=9.0, //todo get this from hiruna //this must be sample_rate/bases_per_second for now
     .drift_std=1.0 //todo get this from hiruna
 };
 
@@ -75,6 +75,9 @@ profile_t prom_r9_dna_prof = {
 typedef struct{
     int8_t ideal;
     int8_t full_contigs;
+    int8_t ideal_time;
+    int8_t ideal_amp;
+
     int32_t rlen;
     int64_t seed;
 } opt_sim_t;
@@ -109,6 +112,9 @@ static struct option long_options[] = {
     {"fasta", required_argument, 0, 'q'},          //7 fasta perfect
     {"rlen", required_argument, 0, 'r'},           //8 median read
     {"seed", required_argument, 0, 0 },            //9 seed
+    {"ideal-time", no_argument, 0, 0 },            //10 no time domain noise
+    {"ideal-amp", no_argument, 0, 0 },             //11 no amplitude domain noise
+    {"drift-mean", required_argument, 0, 0 },      //12 drift mean
     {0, 0, 0, 0}};
 
 
@@ -163,19 +169,22 @@ static double grng(grng_t *r){
 
 static void init_opt_sim(opt_sim_t *opt){
     opt->ideal = 0;
+    opt->ideal_time = 0;
+    opt->ideal_amp = 0;
     opt->full_contigs = 0;
     opt->rlen = 10000;
     opt->seed = 0;
 }
 
-static core_sim_t *init_core_sim(opt_sim_t opt){
+static core_sim_t *init_core_sim(opt_sim_t opt, profile_t p){
     core_sim_t *core = (core_sim_t *)malloc(sizeof(core_sim_t));
     core->opt = opt;
 
-    profile_t p = core->profile = prom_r9_dna_prof;
+    core->profile = p;
     model_t *m = core->model = (model_t*)malloc(sizeof(model_t) * MAX_NUM_KMER);
     uint32_t k = core->kmer_size = set_model(core->model, MODEL_ID_DNA_NUCLEOTIDE);
     uint32_t n = core->num_kmer = (uint32_t)(1 << 2*k);
+
 
     core->ref_pos = opt.seed;
     core->rand_strand = opt.seed+1;
@@ -419,10 +428,13 @@ int16_t *gen_sig(core_sim_t *core, const char *read, int32_t len, double *offset
     model_t *pore_model = core->model;
 
     int8_t ideal = core->opt.ideal;
+    int8_t ideal_time = core->opt.ideal_time;
+    int8_t ideal_amp = core->opt.ideal_amp;
 
     int64_t n_kmers = len-kmer_size+1;
     int64_t n=0;
-    int sps = round((profile->sample_rate)/(double)(profile->bases_per_second));
+    int sps = (int)profile->drift_mean;
+
     int64_t c = n_kmers * sps + 2000;
     int16_t *raw_signal = (int16_t *)malloc(c*sizeof(int16_t));
 
@@ -438,7 +450,7 @@ int16_t *gen_sig(core_sim_t *core, const char *read, int32_t len, double *offset
 
     for (int i=0; i< n_kmers; i++){
         uint32_t kmer_rank = get_kmer_rank(read+i, kmer_size);
-        if(!ideal){
+        if(!(ideal || ideal_time)){
             sps = round(nrng(core->rand_time));
         }
         for(int j=0; j<sps; j++){
@@ -447,7 +459,7 @@ int16_t *gen_sig(core_sim_t *core, const char *read, int32_t len, double *offset
                 raw_signal = (int16_t *)realloc(raw_signal, c*sizeof(int16_t));
             }
             float s = 0;
-            if(ideal){
+            if(ideal || ideal_amp){
                 s=pore_model[kmer_rank].level_mean;
             } else {
                 s=nrng(core->kmer_gen[kmer_rank]);
@@ -547,6 +559,8 @@ int sim_main(int argc, char* argv[], double realtime0) {
     opt_sim_t opt;
     init_opt_sim(&opt);
 
+    profile_t p = prom_r9_dna_prof;
+
     int nreads = 4000;
 
     //parse the user args
@@ -570,6 +584,12 @@ int sim_main(int argc, char* argv[], double realtime0) {
             opt.rlen = atoi(optarg);
         } else if (c == 0 && longindex == 9){  //seed
             opt.seed = atoi(optarg);
+        } else if (c == 0 && longindex == 10){ //ideal-time
+            opt.ideal_time = 1;
+        } else if (c == 0 && longindex == 11){ //ideal-amp
+            opt.ideal_amp = 1;
+        } else if (c == 0 && longindex == 12){ //drift-mean
+            p.drift_mean = atof(optarg);
         }
     }
 
@@ -584,6 +604,10 @@ int sim_main(int argc, char* argv[], double realtime0) {
         fprintf(fp_help,"   -n INT                     Number of reads to simulate (ignored if --full-contigs) [%d]\n", nreads);
         fprintf(fp_help,"   -q FILE                    FASTA file to write simulated reads with no errors\n");
         fprintf(fp_help,"   -r INT                     Median read length (estimate only, ignored if --full-contigs) [%d]\n",opt.rlen);
+        fprintf(fp_help,"   --seed INT                 Seed or random generators (if 0, will be autogenerated) [%ld]\n",opt.seed);
+        fprintf(fp_help,"   --ideal-time               Generate signals with no time domain noise\n");
+        fprintf(fp_help,"   --ideal-amp                Generate signals with no amplitiude domain noise\n");
+        fprintf(fp_help,"   --drift-mean FLOAT         Mean of drift rate [%f]\n",p.drift_mean);
         if(fp_help == stdout){
             exit(EXIT_SUCCESS);
         }
@@ -632,7 +656,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         n = ref->num_ref;
     }
 
-    core_sim_t *core = init_core_sim(opt);
+    core_sim_t *core = init_core_sim(opt, p);
 
     FILE *fp_fasta = NULL;
     if(fasta){

@@ -572,8 +572,8 @@ int16_t *gen_prefix_rna(core_sim_t *core, int16_t *raw_signal, int64_t* n, int64
         raw_signal[i] = raw_signal[i]-off;
     }
 
-    const char *rise = "AAAAAGAAAAAACCCCCCCCCCCCCCCCCC";
-    raw_signal=gen_sig_core_seq(core, raw_signal, n, c, offset, rise, strlen(rise));
+    const char *stall = "AAAAAGAAAAAACCCCCCCCCCCCCCCCCC";
+    raw_signal=gen_sig_core_seq(core, raw_signal, n, c, offset, stall, strlen(stall));
 
 
     return raw_signal;
@@ -593,11 +593,14 @@ char *attach_prefix(core_sim_t *core, const char *read, int32_t *len){
         seq[*len] = '\0';
         s = seq;
     } else{
+        const char *stall = "TTTTTTTTTTTTTTTTTTAATCAA";
+        int stall_len = strlen(stall);
         int adapt_len = strlen(adaptor_dna);
-        char *seq = malloc((*len+adapt_len+1)*sizeof(char));
-        strncpy(seq, adaptor_dna, adapt_len);
-        strncpy(seq+adapt_len, read, *len);
-        *len = *len+adapt_len;
+        char *seq = malloc((*len+stall_len+adapt_len+1)*sizeof(char));
+        strncpy(seq, stall, stall_len);
+        strncpy(seq+stall_len, adaptor_dna, adapt_len);
+        strncpy(seq+stall_len+adapt_len, read, *len);
+        *len = *len+stall_len+adapt_len;
         seq[*len] = '\0';
         s = seq;
     }

@@ -56,8 +56,8 @@ profile_t minion_r9_dna_prof = {
     .offset_std=10.25279688,
     .median_before_mean=200.815801,
     .median_before_std=20.48933762,
-    .drift_mean=9.0, //todo get this from hiruna //this must be sample_rate/bases_per_second for now
-    .drift_std=1.0 //todo get this from hiruna
+    .drift_mean=9.0, //this must be sample_rate/bases_per_second for now
+    .drift_std=5.0
 };
 profile_t prom_r9_dna_prof = {
     .digitisation = 2048,
@@ -68,8 +68,8 @@ profile_t prom_r9_dna_prof = {
     .offset_std=14.1575,
     .median_before_mean=214.2890337,
     .median_before_std=18.0127916,
-    .drift_mean=9.0, //todo get this from hiruna //this must be sample_rate/bases_per_second for now
-    .drift_std=1.0 //todo get this from hiruna
+    .drift_mean=9.0, //this must be sample_rate/bases_per_second for now
+    .drift_std=5.0
 };
 profile_t minion_r9_rna_prof = {
     .digitisation = 8192,
@@ -80,8 +80,8 @@ profile_t minion_r9_rna_prof = {
     .offset_std=4.115262472,
     .median_before_mean=242.6584118,
     .median_before_std=10.60230888,
-    .drift_mean=43.0, //todo get this from hiruna //this must be sample_rate/bases_per_second for now
-    .drift_std=5.0 //todo get this from hiruna
+    .drift_mean=43.0,  //this must be sample_rate/bases_per_second for now
+    .drift_std=35.0
 };
 profile_t prom_r9_rna_prof = {
     .digitisation = 2048,
@@ -92,8 +92,8 @@ profile_t prom_r9_rna_prof = {
     .offset_std=12.87185278,
     .median_before_mean=238.5286796,
     .median_before_std=21.1871794,
-    .drift_mean=43.0, //todo get this from hiruna //this must be sample_rate/bases_per_second for now
-    .drift_std=5.0 //todo get this from hiruna
+    .drift_mean=43.0,  //this must be sample_rate/bases_per_second for now
+    .drift_std=35.0
 };
 
 const char* polya = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";

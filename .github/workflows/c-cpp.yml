@@ -1,0 +1,113 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+
+jobs:
+  ubuntu_14:
+    name: ubuntu_14
+    runs-on: ubuntu-18.04
+    container: ubuntu:14.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: install packages
+      run: sudo apt-get update && sudo apt-get install -y zlib1g-dev gcc g++ autoconf automake make
+    - name: env
+      run: lsb_release -a &&  ldd --version && gcc --version && g++ --version
+    - name: build
+      run:  make -j8
+    - name: test
+      run: make test
+  ubuntu_16:
+    name: Ubuntu 16
+    runs-on: ubuntu-18.04
+    container: ubuntu:16.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: install packages
+      run: apt-get update && apt-get install -y zlib1g-dev gcc g++ autoconf automake make valgrind
+    - name: build
+      run: make -j8
+    - name: test
+      run: make test
+    - name: test mem
+      run: scripts/test.sh mem
+  ubuntu_18:
+    name: Ubuntu 18
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: install packages
+      run: sudo apt-get update && sudo apt-get install -y zlib1g-dev
+    - name: build
+      run:  make -j8
+    - name: test
+      run: make test
+  ubuntu_20:
+    name: Ubuntu 20
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: install packages
+      run: sudo apt-get update && sudo apt-get install zlib1g-dev
+    - name: build-gcc
+      run: make -j8
+    - name: test-gcc
+      run: make test
+    - name: build-clang
+      run: make clean && make CC=clang -j8
+    - name: test-clang
+      run: make test
+  ubuntu_20_icc:
+    name: Ubuntu 20 icc
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Intel Apt repository
+      timeout-minutes: 1
+      run: |
+        wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
+        sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
+        rm GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
+        echo "deb https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
+        sudo apt-get update
+    - name: install packages
+      run: sudo apt-get install -y zlib1g-dev libzstd-dev intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic
+    - name: Setup Intel oneAPI environment
+      run: |
+        source /opt/intel/oneapi/setvars.sh
+        printenv >> $GITHUB_ENV
+    - name: build
+      run: make CC=icc -j8
+    - name: test
+      run: make test
+  os_x_11:
+    name: OSX 11
+    runs-on: macos-11
+    steps:
+    - uses: actions/checkout@v2
+    - name: build
+      run: make -j8
+    - name: test
+      run: make test
+  arm64:
+    name: ubuntu arm
+    runs-on: ubuntu-latest
+    steps:
+    - run: docker run --rm --privileged multiarch/qemu-user-static:register --reset
+    - uses: docker://multiarch/ubuntu-core:arm64-bionic
+      with:
+        args: 'uname -a'
+    - uses: actions/checkout@v1
+    - uses: docker://multiarch/ubuntu-core:arm64-bionic
+      with:
+        args: >
+          bash -c "apt-get update &&
+          apt-get install -y zlib1g-dev gcc make &&
+          ldd --version && gcc --version &&
+          make && make test

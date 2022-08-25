@@ -43,8 +43,8 @@ typedef struct {
     double offset_std;
     double median_before_mean;
     double median_before_std;
-    double drift_mean;
-    double drift_std;
+    double dwell_mean;
+    double dwell_std;
 } profile_t;
 
 profile_t minion_r9_dna_prof = {
@@ -56,8 +56,8 @@ profile_t minion_r9_dna_prof = {
     .offset_std=10.25279688,
     .median_before_mean=200.815801,
     .median_before_std=20.48933762,
-    .drift_mean=9.0, //this must be sample_rate/bases_per_second for now
-    .drift_std=5.0
+    .dwell_mean=9.0, //this must be sample_rate/bases_per_second for now
+    .dwell_std=5.0
 };
 profile_t prom_r9_dna_prof = {
     .digitisation = 2048,
@@ -68,8 +68,8 @@ profile_t prom_r9_dna_prof = {
     .offset_std=14.1575,
     .median_before_mean=214.2890337,
     .median_before_std=18.0127916,
-    .drift_mean=9.0, //this must be sample_rate/bases_per_second for now
-    .drift_std=5.0
+    .dwell_mean=9.0, //this must be sample_rate/bases_per_second for now
+    .dwell_std=5.0
 };
 profile_t minion_r9_rna_prof = {
     .digitisation = 8192,
@@ -80,8 +80,8 @@ profile_t minion_r9_rna_prof = {
     .offset_std=4.115262472,
     .median_before_mean=242.6584118,
     .median_before_std=10.60230888,
-    .drift_mean=43.0,  //this must be sample_rate/bases_per_second for now
-    .drift_std=35.0
+    .dwell_mean=43.0,  //this must be sample_rate/bases_per_second for now
+    .dwell_std=35.0
 };
 profile_t prom_r9_rna_prof = {
     .digitisation = 2048,
@@ -92,8 +92,8 @@ profile_t prom_r9_rna_prof = {
     .offset_std=12.87185278,
     .median_before_mean=238.5286796,
     .median_before_std=21.1871794,
-    .drift_mean=43.0,  //this must be sample_rate/bases_per_second for now
-    .drift_std=35.0
+    .dwell_mean=43.0,  //this must be sample_rate/bases_per_second for now
+    .dwell_std=35.0
 };
 
 const char* polya = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -147,10 +147,11 @@ static struct option long_options[] = {
     {"seed", required_argument, 0, 0 },            //9 seed
     {"ideal-time", no_argument, 0, 0 },            //10 no time domain noise
     {"ideal-amp", no_argument, 0, 0 },             //11 no amplitude domain noise
-    {"drift-mean", required_argument, 0, 0 },      //12 drift mean
+    {"dwell-mean", required_argument, 0, 0 },      //12 dwell mean
     {"profile", required_argument, 0, 'm' },       //13 parameter profile
     {"kmer-model", required_argument, 0, 0},       //14 custom nucleotide k-mer model file
     {"prefix", no_argument, 0, 0},                 //15 prefix such as adaptor
+    {"dwell-std", required_argument, 0, 0 },       //16 dwell std
     {0, 0, 0, 0}};
 
 
@@ -257,7 +258,7 @@ static core_sim_t *init_core_sim(opt_sim_t opt, profile_t p){
 
     core->ref_pos = opt.seed;
     core->rand_strand = opt.seed+1;
-    core->rand_time = init_nrng(opt.seed+2, p.drift_mean, p.drift_std);
+    core->rand_time = init_nrng(opt.seed+2, p.dwell_mean, p.dwell_std);
     core->rand_rlen = init_grng(opt.seed+3, 2.0, opt.rlen);
     core->rand_offset = init_nrng(opt.seed+4, p.offset_mean, p.offset_std);
     core->rand_median_before = init_nrng(opt.seed+5, p.median_before_mean, p.median_before_std);
@@ -526,7 +527,7 @@ int16_t * gen_sig_core_seq(core_sim_t *core, int16_t *raw_signal, int64_t* n, in
     int8_t ideal = core->opt.ideal;
     int8_t ideal_time = core->opt.ideal_time;
     int8_t ideal_amp = core->opt.ideal_amp;
-    int sps = (int)profile->drift_mean;
+    int sps = (int)profile->dwell_mean;
 
     int64_t n_kmers = len-kmer_size+1;
 
@@ -563,7 +564,7 @@ int16_t *gen_prefix_rna(core_sim_t *core, int16_t *raw_signal, int64_t* n, int64
     // raw_signal=gen_sig_core_seq(core, raw_signal, n, c, offset, polya, strlen(polya));
 
     //adaptor
-    int st = *n-(strlen(adaptor_rna)*(int)profile->drift_mean);
+    int st = *n-(strlen(adaptor_rna)*(int)profile->dwell_mean);
     // raw_signal=gen_sig_core_seq(core, raw_signal, n, c, offset, adaptor_rna, strlen(adaptor_rna));
     int end = *n;
     //fprintf(stderr, "adaptor_rna: %d %d\n", st, end);
@@ -619,7 +620,7 @@ int16_t *gen_sig_core(core_sim_t *core, const char *read, int32_t len, double *o
 
     int64_t n_kmers = len-kmer_size+1;
     int64_t n=0;
-    int sps = (int)profile->drift_mean;
+    int sps = (int)profile->dwell_mean;
 
     int64_t c = n_kmers * sps + 2000;
     int16_t *raw_signal = (int16_t *)malloc(c*sizeof(int16_t));
@@ -725,9 +726,9 @@ char *gen_read_dna(core_sim_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos
            break;
         } else {
             if(nc == -1) {
-                VERBOSE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
+                LOG_TRACE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
             } else{
-                VERBOSE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
+                LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
             }
             free(seq);
         }
@@ -772,9 +773,9 @@ char *gen_read_rna(core_sim_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos
            break;
         } else {
             if(nc == -1) {
-                VERBOSE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
+                LOG_TRACE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
             } else{
-                VERBOSE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
+                LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
             }
             free(seq);
         }
@@ -793,7 +794,7 @@ static inline char *gen_read(core_sim_t *core, ref_t *ref, char **ref_id, int32_
 
 int sim_main(int argc, char* argv[], double realtime0) {
 
-    const char* optstring = "o:hVn:q:r:x:";
+    const char* optstring = "o:hVn:q:r:x:v:";
 
     int longindex = 0;
     int32_t c = -1;
@@ -814,6 +815,9 @@ int sim_main(int argc, char* argv[], double realtime0) {
         if (c=='V'){
             fprintf(stdout,"sigsim %s\n",SIGSIM_VERSION);
             exit(EXIT_SUCCESS);
+        }else if (c=='v'){
+            int v = atoi(optarg);
+            set_log_level((enum sigsim_log_level_opt)v);
         } else if (c=='h'){
             fp_help = stdout;
         } else if (c=='x'){
@@ -836,12 +840,14 @@ int sim_main(int argc, char* argv[], double realtime0) {
             opt.ideal_time = 1;
         } else if (c == 0 && longindex == 11){ //ideal-amp
             opt.ideal_amp = 1;
-        } else if (c == 0 && longindex == 12){ //drift-mean
-            p.drift_mean = atof(optarg);
+        } else if (c == 0 && longindex == 12){ //dwell-mean
+            p.dwell_mean = atof(optarg);
         } else if (c == 0 && longindex == 14) { //custom nucleotide model file
             opt.model_file = optarg;
         } else if (c == 0 && longindex == 15) { //prefix
             opt.prefix = 1;
+        } else if (c == 0 && longindex == 16) { //dwell-std
+            p.dwell_std = atof(optarg);
         }
     }
 
@@ -853,19 +859,21 @@ int sim_main(int argc, char* argv[], double realtime0) {
         fprintf(fp_help,"                              e.g., dna-r9-min, dna-r9-prom, rna-r9-min, rna-r9-prom\n");
         fprintf(fp_help,"   -n INT                     Number of reads to simulate (ignored if --full-contigs) [%d]\n", nreads);
         fprintf(fp_help,"   -q FILE                    FASTA file to write simulated reads with no errors\n");
-        fprintf(fp_help,"   -r INT                     Median read length (estimate only, ignored if --full-contigs or dRNA) [%d]\n",opt.rlen);
+        fprintf(fp_help,"   -r INT                     Median read length (estimate only, unused for direct RNA) [%d]\n",opt.rlen);
         fprintf(fp_help,"   -h                         help\n");
-        fprintf(fp_help,"   --full-contigs             Generate signals for complete contigs (ineffective for gDNA)\n");
         fprintf(fp_help,"   --ideal                    Generate ideal signals with no noise\n");
         fprintf(fp_help,"   --version                  print version\n");
+        fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",(int)get_log_level());
 
         fprintf(fp_help,"\nadvanced options:\n");
+        fprintf(fp_help,"   --full-contigs             Generate signals for complete contigs (only effective for DNA)\n");
+        fprintf(fp_help,"   --prefix                   generate prefixes such as adaptor (and polya for RNA)\n");
+        fprintf(fp_help,"   --kmer-model FILE          custom nucleotide k-mer model file (format similar to https://github.com/hasindu2008/f5c/blob/master/test/r9-models/r9.4_450bps.nucleotide.6mer.template.model)\n");
         fprintf(fp_help,"   --seed INT                 Seed or random generators (if 0, will be autogenerated) [%ld]\n",opt.seed);
         fprintf(fp_help,"   --ideal-time               Generate signals with no time domain noise\n");
         fprintf(fp_help,"   --ideal-amp                Generate signals with no amplitiude domain noise\n");
-        fprintf(fp_help,"   --drift-mean FLOAT         Mean of drift rate [%f]\n",p.drift_mean);
-        fprintf(fp_help,"   --kmer-model FILE          custom nucleotide k-mer model file (format similar to https://github.com/hasindu2008/f5c/blob/master/test/r9-models/r9.4_450bps.nucleotide.6mer.template.model)\n");
-        fprintf(fp_help,"   --prefix                   generate prefixes such as adaptor (and polya for RNA)\n");
+        fprintf(fp_help,"   --dwell-mean FLOAT         Mean of number of signal samples per base [%f]\n",p.dwell_mean);
+        fprintf(fp_help,"   --dwell-std FLOAT          standard deveation of number of signal samples per base [%f]\n",p.dwell_std);
         if(fp_help == stdout){
             exit(EXIT_SUCCESS);
         }

@@ -13,7 +13,7 @@
 #include <assert.h>
 #include "sigsim.h"
 #include "model.h"
-#include "misc.h"
+#include "error.h"
 
 //#define DEBUG_MODEL_PRINT 1
 

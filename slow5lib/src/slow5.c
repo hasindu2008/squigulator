@@ -388,17 +388,17 @@ static inline slow5_file_t *slow5_open_write(const char *filename){
         return NULL;
     }
 
-    slow5_file_t *sf = slow5_init_empty(fp, filename, SLOW5_FORMAT_UNKNOWN);
-    if(!sf){
+    slow5_file_t *s5p = slow5_init_empty(fp, filename, SLOW5_FORMAT_UNKNOWN);
+    if(!s5p){
         SLOW5_ERROR("Error initialising an empty SLOW5 file '%s'",filename);
         fclose(fp);
         return NULL;
     }
 
-    slow5_hdr_t *header=sf->header;
+    slow5_hdr_t *header=s5p->header;
     if (slow5_hdr_add_rg(header) < 0){ //todo error handling down the chain
         SLOW5_ERROR("Error adding read group 0 for %s",filename);
-        slow5_close(sf);
+        slow5_close(s5p);
         return NULL;
     }
     header->num_read_groups = 1;
@@ -406,23 +406,23 @@ static inline slow5_file_t *slow5_open_write(const char *filename){
     struct slow5_aux_meta *aux_meta = slow5_aux_meta_init_empty();
     if(!aux_meta){
         SLOW5_ERROR("Error initializing aux meta for %s",filename);
-        slow5_close(sf);
+        slow5_close(s5p);
         return NULL;
     }
     header->aux_meta = aux_meta;
 
     //this structure is only to be used in single threaded writes
-    if(sf->format == SLOW5_FORMAT_BINARY){
+    if(s5p->format == SLOW5_FORMAT_BINARY){
         slow5_press_method_t press_out = {SLOW5_COMPRESS_ZLIB, SLOW5_COMPRESS_SVB_ZD};
-        sf->compress = slow5_press_init(press_out);
-        if(!sf->compress){
+        s5p->compress = slow5_press_init(press_out);
+        if(!s5p->compress){
             SLOW5_ERROR("Could not initialise the slow5 compression method. %s","");
-            slow5_close(sf);
+            slow5_close(s5p);
             return NULL;
         }
     }
 
-    return sf;
+    return s5p;
 }
 
 /* Opens a SLOW5 file with the given pathname for appending,
@@ -562,6 +562,44 @@ static inline void slow5_free(struct slow5_file *s5p) {
     }
 }
 
+int slow5_set_press(slow5_file_t *s5p, enum slow5_press_method rec_press, enum slow5_press_method sig_press){
+
+    if(s5p==NULL){
+        SLOW5_ERROR_EXIT("Argument '%s' cannot be NULL.", SLOW5_TO_STR(s5p));
+        slow5_errno = SLOW5_ERR_ARG;
+        return -1;
+    }
+    //only works in binary mode and opened in 'w' mode
+    if(!(s5p->meta.mode && strcmp(s5p->meta.mode,"w")==0)){
+        SLOW5_ERROR_EXIT("%s","File must have been opened for writing.");
+        slow5_errno = SLOW5_ERR_ARG;
+        return -1;
+    }
+
+    if(!(s5p->format == SLOW5_FORMAT_BINARY)){
+        SLOW5_ERROR_EXIT("%s","File should be in binary format (blow5).");
+        slow5_errno = SLOW5_ERR_ARG;
+        return -1;
+    }
+
+
+    //free the existing press if any
+    slow5_press_free(s5p->compress);
+
+    //this structure is only to be used in single threaded writes
+    if(s5p->format == SLOW5_FORMAT_BINARY){
+        slow5_press_method_t press_out = {rec_press,sig_press};
+        s5p->compress = slow5_press_init(press_out);
+        if(!s5p->compress){
+            slow5_errno = SLOW5_ERR_PRESS;
+            SLOW5_ERROR_EXIT("Could not initialise the slow5 compression method. %s","");
+            return -1;
+        }
+    }
+
+    return 0;
+
+}
 
 // slow5 header
 
@@ -2558,6 +2596,10 @@ int slow5_rec_depress_parse(char **mem, size_t *bytes, const char *read_id, stru
     return 0;
 }
 
+int slow_decode(void **mem, size_t *bytes, slow5_rec_t **read, slow5_file_t *s5p){
+    return slow5_rec_depress_parse((char **)mem, bytes, NULL, read, s5p);
+}
+
 /*
  * parse read_mem with read_size bytes, intended read ID read_id, the given format and auxiliary meta data aux_meta
  * if read compression is used read_mem should be decompressed beforehand, signal decompression is handled here though
@@ -2832,7 +2874,7 @@ int slow5_rec_parse(char *read_mem, size_t read_size, const char *read_id, struc
                         size = read->len_raw_signal;
                     }
                     if (read->raw_signal == NULL) {
-                        read->raw_signal = (int16_t *) malloc(size);
+                        read->raw_signal = (int16_t *) malloc((size+63)>>5<<5); //(size+63)/32*32
                         SLOW5_MALLOC_CHK(read->raw_signal);
                         if (read->raw_signal == NULL) {
                             read->len_raw_signal = 0;
@@ -2840,7 +2882,7 @@ int slow5_rec_parse(char *read_mem, size_t read_size, const char *read_id, struc
                             break;
                         }
                     } else if (prev_len_raw_signal < read->len_raw_signal) {
-                        int16_t *raw_signal_tmp = (int16_t *) realloc(read->raw_signal, size);
+                        int16_t *raw_signal_tmp = (int16_t *) realloc(read->raw_signal, (size+63)>>5<<5); //(size+63/32*32
                         SLOW5_MALLOC_CHK(raw_signal_tmp);
                         if (raw_signal_tmp == NULL) {
                             read->len_raw_signal = prev_len_raw_signal;
@@ -3229,6 +3271,16 @@ void *slow5_get_next_mem(size_t *n, const struct slow5_file *s5p) {
             *n = 0;
         }
         return NULL;
+}
+
+
+int slow5_get_next_bytes(void **mem, size_t *bytes, slow5_file_t *s5p){
+    *mem = slow5_get_next_mem(bytes, s5p);
+    if (*mem == NULL) {
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
 /**
@@ -3705,6 +3757,16 @@ int slow5_rec_fwrite(FILE *fp, struct slow5_rec *read, struct slow5_aux_meta *au
     return ret;
 }
 
+int slow5_write_bytes(void *mem, size_t bytes, slow5_file_t *s5p){
+    size_t n = fwrite(mem, bytes, 1, s5p->fp);
+    int ret;
+    if (n != 1) {
+        ret = -1;
+    } else {
+        ret = 0; // TODO is this okay
+    }
+    return ret;
+}
 
 int slow5_write(slow5_rec_t *rec, slow5_file_t *s5p){
     int ret = slow5_rec_fwrite(s5p->fp, rec, s5p->header->aux_meta, s5p->format, s5p->compress);
@@ -3983,6 +4045,36 @@ void *slow5_rec_to_mem(struct slow5_rec *read, struct slow5_aux_meta *aux_meta, 
     }
 
     return (void *) mem;
+}
+
+int slow5_encode(void **mem, size_t *bytes, slow5_rec_t *read, slow5_file_t *s5p){
+
+    slow5_press_t *press_ptr = NULL;
+
+    if(s5p->compress){
+
+        //todo - check error
+        //assert(sf->compress->record_press!=NULL);
+        //assert(sf->compress->signal_press!=NULL);
+
+        slow5_press_method_t press_out = {s5p->compress->record_press->method, s5p->compress->signal_press->method};
+        press_ptr = slow5_press_init(press_out);
+        if(!press_ptr){
+            SLOW5_ERROR("Could not initialize the slow5 compression method%s","");
+            return -1;
+        }
+    }
+
+    *mem = slow5_rec_to_mem(read, s5p->header->aux_meta, s5p->format, press_ptr, bytes);
+    slow5_press_free(press_ptr);
+
+    if(*mem == NULL){
+        SLOW5_ERROR("Could not encode the slow5 record%s","");
+        return -1;
+    }
+
+    return 0;
+
 }
 
 /*

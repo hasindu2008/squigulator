@@ -588,6 +588,8 @@ static inline slow5_rec_t *slow5_rec_init(void) {
 // -2   field not found
 // -3   type is an array type
 // -4   data is invalid (eg enum out of range)
+// these two functions require the "field" to be lifetime scope. Can be fixed by pointing to header aux attribute list.
+// https://github.com/hasindu2008/slow5lib/commit/63c81a25689b608275277b66300dde824d371bf7
 int slow5_aux_set(slow5_rec_t *read, const char *field, const void *data, slow5_hdr_t *header);
 //sets an auxiliary field (string datatype) of a SLOW5 record
 int slow5_aux_set_string(slow5_rec_t *read, const char *field, const char *data, slow5_hdr_t *header);
@@ -604,6 +606,10 @@ int slow5_aux_set_string(slow5_rec_t *read, const char *field, const char *data,
  * @return  number of bytes written, -1 on error
  */
 int slow5_write(slow5_rec_t *read, slow5_file_t *s5p);
+
+//set compression for writing
+//should be immediately done after opening a blow5 for writing (mode 'w')
+int slow5_set_press(slow5_file_t *s5p, enum slow5_press_method rec_press, enum slow5_press_method sig_press);
 
 
 /**************************************************************************************************
@@ -645,11 +651,13 @@ enum slow5_aux_type *slow5_get_aux_types(const slow5_hdr_t *header,uint64_t *len
  */
 char **slow5_get_aux_enum_labels(const slow5_hdr_t *header, const char *field, uint8_t *n);
 
-void *slow5_get_next_mem(size_t *n, const slow5_file_t *s5p);
+int slow5_get_next_bytes(void **mem, size_t *bytes, slow5_file_t *s5p);
 
-int slow5_rec_depress_parse(char **mem, size_t *bytes, const char *read_id, slow5_rec_t **read, slow5_file_t *s5p);
+int slow_decode(void **mem, size_t *bytes, slow5_rec_t **read, slow5_file_t *s5p);
 
+int slow5_encode(void **mem, size_t *bytes, slow5_rec_t *read, slow5_file_t *s5p);
 
+int slow5_write_bytes(void *mem, size_t bytes, slow5_file_t *s5p);
 
 /*
 IMPORTANT: The following low-level API functions are not yet finalised or documented, until someone requests.

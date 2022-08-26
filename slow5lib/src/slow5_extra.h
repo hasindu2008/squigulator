@@ -58,11 +58,13 @@ char **slow5_aux_meta_enum_parse(char *tok, enum slow5_aux_type type, uint8_t *n
 
 // slow5 record
 void *slow5_get_mem(const char *read_id, size_t *n, const slow5_file_t *s5p);
+void *slow5_get_next_mem(size_t *n, const slow5_file_t *s5p);
 int slow5_rec_set(slow5_rec_t *read, slow5_aux_meta_t *aux_meta, const char *attr, const void *data);
 int slow5_rec_set_array(slow5_rec_t *read, slow5_aux_meta_t *aux_meta, const char *attr, const void *data, size_t len);
 static inline int slow5_rec_set_string(slow5_rec_t *read, slow5_aux_meta_t *aux_meta, const char *attr, const char *data) {
     return slow5_rec_set_array(read, aux_meta, attr, data, strlen(data));
 }
+int slow5_rec_depress_parse(char **mem, size_t *bytes, const char *read_id, slow5_rec_t **read, slow5_file_t *s5p);
 int slow5_rec_parse(char *read_mem, size_t read_size, const char *read_id, slow5_rec_t **read, enum slow5_fmt format, slow5_aux_meta_t *aux_meta, enum slow5_press_method signal_method);
 void slow5_rec_aux_free(khash_t(slow5_s2a) *aux_map);
 

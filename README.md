@@ -69,7 +69,7 @@ DNA examples:
 # generate 150,000 PromethION DNA reads from a reference genome
 sigsim hg38noAlt.fa -x dna-r9-prom -o reads.blow5 -n 150000
 
-# generate 30,000 MinION ultra-long DNA reads with median readlength of around 50,000 bases
+# generate 30,000 MinION ultra-long DNA reads with mean readlength of around 50,000 bases
 sigsim hg38noAlt.fa -x dna-r9-min -o reads.blow5 -n 30000 -r 50000
 
 # generate 1000 PromethION DNA reads with perfect signals with no noise
@@ -86,11 +86,11 @@ sigsim gencode.v40.transcripts.fa -x rna-r9-prom -o reads.blow5 -n 4000 --prefix
 DNA example with variants that requires [bcftools](http://www.htslib.org/download/):
 
 ```
-# ploidy 1; coronavirus (reference ~30,000 bases) at 500X coverage with median readlength of around 300 bases (approximately 30,000*500/300=50,000 reads); apply some variants
+# ploidy 1; coronavirus (reference ~30,000 bases) at ~500X depth with mean readlength of around 300 bases (approximately 30,000*500/300=50,000 reads); apply some variants
 bcftools consensus -f nCoV-2019.reference.fasta alpha.vcf -o alpha.fa
 sigsim alpha.fa -x dna-r9-prom -o reads.blow5 -n 50000 -r 300
 
-# ploidy 2; chr22 (reference ~50,000,000 bases) at 30X coverage with median readlength of around 10,000 bases (approximately 50,000,000*30/10,000=150,000 reads); apply na12878 truthset from genome in a bottle consortium
+# ploidy 2; chr22 (reference ~50,000,000 bases) at ~30X coverage with mean readlength of around 10,000 bases (approximately 50,000,000*30/10,000=150,000 reads); apply na12878 truthset from genome in a bottle consortium
 
 bcftools consensus -H 1 -f hg38noAlt_chr22.fa na12878_chr22.vcf.gz -o na12878_chr22_1.fa
 bcftools consensus -H 2 -f hg38noAlt_chr22.fa na12878_chr22.vcf.gz -o na12878_chr22_2.fa

@@ -288,7 +288,7 @@ static core_sim_t *init_core_sim(opt_sim_t opt, profile_t p){
     core->ref_pos = opt.seed;
     core->rand_strand = opt.seed+1;
     core->rand_time = init_nrng(opt.seed+2, p.dwell_mean, p.dwell_std);
-    core->rand_rlen = init_grng(opt.seed+3, 2.0, opt.rlen);
+    core->rand_rlen = init_grng(opt.seed+3, 2.0, opt.rlen/2);
     core->rand_offset = init_nrng(opt.seed+4, p.offset_mean, p.offset_std);
     core->rand_median_before = init_nrng(opt.seed+5, p.median_before_mean, p.median_before_std);
 
@@ -896,7 +896,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         fprintf(fp_help,"                              e.g., dna-r9-min, dna-r9-prom, rna-r9-min, rna-r9-prom\n");
         fprintf(fp_help,"   -n INT                     Number of reads to simulate (ignored if --full-contigs) [%d]\n", nreads);
         fprintf(fp_help,"   -q FILE                    FASTA file to write simulated reads with no errors\n");
-        fprintf(fp_help,"   -r INT                     Median read length (estimate only, unused for direct RNA) [%d]\n",opt.rlen);
+        fprintf(fp_help,"   -r INT                     Mean read length (estimate only, unused for direct RNA) [%d]\n",opt.rlen);
         fprintf(fp_help,"   -h                         help\n");
         fprintf(fp_help,"   --ideal                    Generate ideal signals with no noise\n");
         fprintf(fp_help,"   --version                  print version\n");

@@ -25,6 +25,6 @@ ex ./sigsim test/nCoV-2019.reference.fasta -o a.slow5 -q a.fasta -n 10 --seed 1 
 diff -q test/fasta.exp a.fasta || die "diff failed"
 diff -q test/slow5.exp a.slow5 || die "diff failed"
 
-ex ./sigsim -x rna-r9-prom test/rnasequin_sequences_2.4.fa -o b.slow5 -q b.fastq -n 10 --seed 1 --prefix || die "Running the tool failed"
+ex ./sigsim -x rna-r9-prom test/rnasequin_sequences_2.4.fa -o b.slow5 -q b.fastq -n 10 --seed 1 --prefix=yes || die "Running the tool failed"
 
 echo "Test passed"

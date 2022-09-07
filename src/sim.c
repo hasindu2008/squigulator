@@ -101,17 +101,19 @@ const char *adaptor_dna = "GGCGTCTGCTTGGGTGTTTAACCTTTTTTTTTTAATGTACTTCGTTCAGTTAC
 const char *adaptor_rna = "TGATGATGAGGGATAGACGATGGTTGTTTCTGTTGGTGCTGATATTGCTTTTTTTTTTTTTATGATGCAAGATACGCAC";
 
 typedef struct{
-    int8_t ideal;
-    int8_t full_contigs;
-    int8_t ideal_time;
-    int8_t ideal_amp;
+    //int8_t ideal;
+    //int8_t full_contigs;
+    //int8_t ideal_time;
+    //int8_t ideal_amp;
 
     int32_t rlen;
     int64_t seed;
 
-    int8_t rna;
+    //int8_t rna;
     const char *model_file;
-    int8_t prefix;
+    //int8_t prefix;
+
+    uint32_t flag;
 
 } opt_sim_t;
 
@@ -150,28 +152,54 @@ static struct option long_options[] = {
     {"dwell-mean", required_argument, 0, 0 },      //12 dwell mean
     {"profile", required_argument, 0, 'm' },       //13 parameter profile
     {"kmer-model", required_argument, 0, 0},       //14 custom nucleotide k-mer model file
-    {"prefix", no_argument, 0, 0},                 //15 prefix such as adaptor
+    {"prefix", required_argument, 0, 0},                 //15 prefix such as adaptor
     {"dwell-std", required_argument, 0, 0 },       //16 dwell std
     {0, 0, 0, 0}};
 
 
 profile_t set_profile(char *prof_name, opt_sim_t *opt){
-    opt->rna = 0;
+    //opt->rna = 0;
     if(strcmp(prof_name, "dna-r9-min") == 0){
         return minion_r9_dna_prof;
     }else if(strcmp(prof_name, "dna-r9-prom") == 0){
         return prom_r9_dna_prof;
     }else if(strcmp(prof_name, "rna-r9-min") == 0){
-        opt->rna = 1;
+        opt->flag |= SIGSIM_RNA;
         return minion_r9_rna_prof;
     }else if(strcmp(prof_name, "rna-r9-prom") == 0){
-        opt->rna = 1;
+        opt->flag |= SIGSIM_RNA;
         return prom_r9_rna_prof;
     }else{
         ERROR("Unknown profile: %s\n", prof_name);
         exit(EXIT_FAILURE);
     }
 }
+
+
+//parse yes or no arguments : taken from minimap2
+static inline void yes_or_no(opt_sim_t* opt, uint64_t flag, int long_idx, const char* arg, int yes_to_set)
+{
+    if (yes_to_set) {
+        if (strcmp(arg, "yes") == 0 || strcmp(arg, "y") == 0) {
+            opt->flag |= flag;
+        } else if (strcmp(arg, "no") == 0 || strcmp(arg, "n") == 0) {
+            opt->flag &= ~flag;
+        } else {
+            WARNING("option '--%s' only accepts 'yes' or 'no'.",
+                    long_options[long_idx].name);
+        }
+    } else {
+        if (strcmp(arg, "yes") == 0 || strcmp(arg, "y") == 0) {
+            opt->flag &= ~flag;
+        } else if (strcmp(arg, "no") == 0 || strcmp(arg, "n") == 0) {
+            opt->flag |= flag;
+        } else {
+            WARNING("option '--%s' only accepts 'yes' or 'no'.",
+                    long_options[long_idx].name);
+        }
+    }
+}
+
 
 static nrng_t* init_nrng(int64_t seed,double mean, double std){
     nrng_t *rng = (nrng_t *)malloc(sizeof(nrng_t));
@@ -223,15 +251,16 @@ static double grng(grng_t *r){
 }
 
 static void init_opt_sim(opt_sim_t *opt){
-    opt->ideal = 0;
-    opt->ideal_time = 0;
-    opt->ideal_amp = 0;
-    opt->full_contigs = 0;
+    //opt->ideal = 0;
+    //opt->ideal_time = 0;
+    //opt->ideal_amp = 0;
+    //opt->full_contigs = 0;
     opt->rlen = 10000;
     opt->seed = 0;
-    opt->rna = 0;
+    //opt->rna = 0;
     opt->model_file = NULL;
-    opt->prefix = 0;
+    //opt->prefix = 0;
+    opt->flag = 0;
 }
 
 static core_sim_t *init_core_sim(opt_sim_t opt, profile_t p){
@@ -244,7 +273,7 @@ static core_sim_t *init_core_sim(opt_sim_t opt, profile_t p){
     if (opt.model_file) {
         k=read_model(core->model, opt.model_file, MODEL_TYPE_NUCLEOTIDE);
     } else {
-        if(opt.rna){
+        if(opt.flag & SIGSIM_RNA){
             INFO("%s","builtin RNA nucleotide model loaded");
             k=set_model(core->model, MODEL_ID_RNA_NUCLEOTIDE);
         }
@@ -524,9 +553,9 @@ int16_t * gen_sig_core_seq(core_sim_t *core, int16_t *raw_signal, int64_t* n, in
     uint32_t kmer_size = core->kmer_size;
     model_t *pore_model = core->model;
 
-    int8_t ideal = core->opt.ideal;
-    int8_t ideal_time = core->opt.ideal_time;
-    int8_t ideal_amp = core->opt.ideal_amp;
+    int8_t ideal = core->opt.flag & SIGSIM_IDEAL;
+    int8_t ideal_time = core->opt.flag & SIGSIM_IDEAL_TIME;
+    int8_t ideal_amp = core->opt.flag & SIGSIM_IDEAL_AMP;
     int sps = (int)profile->dwell_mean;
 
     int64_t n_kmers = len-kmer_size+1;
@@ -583,7 +612,7 @@ int16_t *gen_prefix_rna(core_sim_t *core, int16_t *raw_signal, int64_t* n, int64
 char *attach_prefix(core_sim_t *core, const char *read, int32_t *len){
 
     char *s = (char *)read;
-    if(core->opt.rna){
+    if(core->opt.flag & SIGSIM_RNA){
         int polya_len = strlen(polya);
         int adapt_len = strlen(adaptor_rna);
         char *seq = malloc((*len+polya_len+adapt_len+1)*sizeof(char));
@@ -614,7 +643,7 @@ int16_t *gen_sig_core(core_sim_t *core, const char *read, int32_t len, double *o
     uint32_t kmer_size = core->kmer_size;
     //model_t *pore_model = core->model;
 
-    int8_t ideal = core->opt.ideal;
+    int8_t ideal = core->opt.flag & SIGSIM_IDEAL;
     //int8_t ideal_time = core->opt.ideal_time;
     //int8_t ideal_amp = core->opt.ideal_amp;
 
@@ -639,14 +668,14 @@ int16_t *gen_sig_core(core_sim_t *core, const char *read, int32_t len, double *o
     // }
 
     char *tmpread = NULL;
-    if(core->opt.prefix){
+    if(core->opt.flag & SIGSIM_PREFIX){
         read = tmpread = attach_prefix(core, read, &len);
     }
     //fprintf(stderr, "read: %s\n", read);
 
     raw_signal = gen_sig_core_seq(core, raw_signal, &n, &c, *offset, read, len);
 
-    if(core->opt.prefix && core->opt.rna){
+    if(core->opt.flag & SIGSIM_PREFIX && core->opt.flag & SIGSIM_RNA){
         raw_signal=gen_prefix_rna(core, raw_signal,&n,&c, *offset);
     }
     if(tmpread){
@@ -825,9 +854,9 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if(c == 'o'){
             output_file=optarg;
         } else if (c == 0 && longindex == 4){   //generate ideal signal
-            opt.ideal = 1;
+            opt.flag |= SIGSIM_IDEAL;
         } else if (c == 0 && longindex == 5){  //generate signal for complete contigs
-            opt.full_contigs =1 ;
+            opt.flag |= SIGSIM_FULL_CONTIG;
         } else if (c == 'n'){
             nreads = atoi(optarg);
         } else if (c == 'q'){
@@ -837,15 +866,15 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if (c == 0 && longindex == 9){  //seed
             opt.seed = atoi(optarg);
         } else if (c == 0 && longindex == 10){ //ideal-time
-            opt.ideal_time = 1;
+            opt.flag |= SIGSIM_IDEAL_TIME;
         } else if (c == 0 && longindex == 11){ //ideal-amp
-            opt.ideal_amp = 1;
+            opt.flag |= SIGSIM_IDEAL_AMP;
         } else if (c == 0 && longindex == 12){ //dwell-mean
             p.dwell_mean = atof(optarg);
         } else if (c == 0 && longindex == 14) { //custom nucleotide model file
             opt.model_file = optarg;
         } else if (c == 0 && longindex == 15) { //prefix
-            opt.prefix = 1;
+            yes_or_no(&opt, SIGSIM_PREFIX, longindex, optarg, 1);
         } else if (c == 0 && longindex == 16) { //dwell-std
             p.dwell_std = atof(optarg);
         }
@@ -867,7 +896,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
 
         fprintf(fp_help,"\nadvanced options:\n");
         fprintf(fp_help,"   --full-contigs             Generate signals for complete contigs (only effective for DNA)\n");
-        fprintf(fp_help,"   --prefix                   generate prefixes such as adaptor (and polya for RNA)\n");
+        fprintf(fp_help,"   --prefix=yes|no            generate prefixes such as adaptor (and polya for RNA) [no for DNA, yes for RNA]\n");
         fprintf(fp_help,"   --kmer-model FILE          custom nucleotide k-mer model file (format similar to https://github.com/hasindu2008/f5c/blob/master/test/r9-models/r9.4_450bps.nucleotide.6mer.template.model)\n");
         fprintf(fp_help,"   --seed INT                 Seed or random generators (if 0, will be autogenerated) [%ld]\n",opt.seed);
         fprintf(fp_help,"   --ideal-time               Generate signals with no time domain noise\n");
@@ -898,7 +927,9 @@ int sim_main(int argc, char* argv[], double realtime0) {
         exit(EXIT_FAILURE);
     }
 
-    set_header_attributes(sp, opt.rna);
+    int8_t rna = opt.flag & SIGSIM_RNA ? 1 : 0;
+
+    set_header_attributes(sp, rna);
     set_header_aux_fields(sp);
 
     if(slow5_hdr_write(sp) < 0){
@@ -918,7 +949,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
     int32_t ref_pos_st = 0;
     int32_t ref_pos_end = 0;
 
-    if(opt.full_contigs){
+    if(opt.flag & SIGSIM_FULL_CONTIG){
         n = ref->num_ref;
     }
 
@@ -941,7 +972,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
             exit(EXIT_FAILURE);
         }
 
-        if(opt.full_contigs){
+        if(opt.flag & SIGSIM_FULL_CONTIG){
             rid = ref->ref_names[i];
             rlen = ref->ref_lengths[i];
             seq = ref->ref_seq[i];
@@ -949,10 +980,10 @@ int sim_main(int argc, char* argv[], double realtime0) {
             ref_pos_st = 0;
             ref_pos_end = rlen;
         } else {
-            seq=gen_read(core, ref, &rid, &ref_pos_st, &rlen, &strand, opt.rna);
+            seq=gen_read(core, ref, &rid, &ref_pos_st, &rlen, &strand, rna);
             ref_pos_end = ref_pos_st+rlen;
         }
-        int16_t *raw_signal=gen_sig(core, seq, rlen, &offset, &median_before, &len_raw_signal, opt.rna);
+        int16_t *raw_signal=gen_sig(core, seq, rlen, &offset, &median_before, &len_raw_signal, rna);
 
         char *read_id= (char *)malloc(sizeof(char)*(1000));
         sprintf(read_id,"S1_%d!%s!%d!%d!%c",i+1, rid, ref_pos_st, ref_pos_end, strand);
@@ -970,7 +1001,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
             exit(EXIT_FAILURE);
         }
 
-        if(!opt.full_contigs){
+        if(!(opt.flag & SIGSIM_FULL_CONTIG)){
             free(seq);
         }
         slow5_rec_free(slow5_record);

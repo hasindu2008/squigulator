@@ -27,11 +27,11 @@
  *******************************************************/
 
 #define SIGSIM_RNA 0x001 //if RNA or not
-#define SIGSIM_DTW 0x002 //if dtw-std
-#define SIGSIM_INV 0x004 //if set, reverse reference events instead of query events
-#define SIGSIM_SEC 0x008 //if secondaries are printed
-#define SIGSIM_REF 0x010 //map to the whole reference
-#define SIGSIM_END 0x020 //map the end of the query
+#define SIGSIM_FULL_CONTIG 0x002 //if fullcontigs
+#define SIGSIM_IDEAL 0x004 //if set, ideal signals with no noise
+#define SIGSIM_IDEAL_TIME 0x008 //signal with no time domain noise
+#define SIGSIM_IDEAL_AMP 0x010 //signal with no time amplitude domain noise
+#define SIGSIM_PREFIX 0x020 //generate prefix or not
 
 typedef struct {
     int32_t num_ref;

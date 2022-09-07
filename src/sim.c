@@ -839,6 +839,11 @@ int sim_main(int argc, char* argv[], double realtime0) {
 
     int nreads = 4000;
 
+    int8_t opt_n_gvn = 0;
+    int8_t opt_r_gvn = 0;
+    int8_t opt_full_contigs_gvn = 0;
+
+
     //parse the user args
     while ((c = getopt_long(argc, argv, optstring, long_options, &longindex)) >= 0) {
         if (c=='V'){
@@ -857,12 +862,15 @@ int sim_main(int argc, char* argv[], double realtime0) {
             opt.flag |= SIGSIM_IDEAL;
         } else if (c == 0 && longindex == 5){  //generate signal for complete contigs
             opt.flag |= SIGSIM_FULL_CONTIG;
+            opt_full_contigs_gvn = 1;
         } else if (c == 'n'){
             nreads = atoi(optarg);
+            opt_n_gvn = 1;
         } else if (c == 'q'){
             fasta = optarg;
         } else if (c == 'r'){
             opt.rlen = atoi(optarg);
+            opt_r_gvn = 1;
         } else if (c == 0 && longindex == 9){  //seed
             opt.seed = atoi(optarg);
         } else if (c == 0 && longindex == 10){ //ideal-time
@@ -909,9 +917,21 @@ int sim_main(int argc, char* argv[], double realtime0) {
         exit(EXIT_FAILURE);
     }
 
-    //todo check args
+    int8_t rna = opt.flag & SIGSIM_RNA ? 1 : 0;
+
+    //check args
     //-n incompatible with --full-contigs
+    if(opt_n_gvn && opt_full_contigs_gvn){
+        WARNING("%s","Option -n is ignored when --full-contigs is set");
+    }
     //-r incompatible with --full-contigs
+    if(opt_r_gvn && opt_full_contigs_gvn){
+        WARNING("%s","Option -r is ignored when --full-contigs is set");
+    }
+    if (rna && opt_r_gvn){
+        WARNING("%s","Option -r is ignored for RNA. Complete transcripts are simulated.");
+    }
+
 
     if (opt.seed == 0){
         opt.seed = realtime0;
@@ -927,7 +947,6 @@ int sim_main(int argc, char* argv[], double realtime0) {
         exit(EXIT_FAILURE);
     }
 
-    int8_t rna = opt.flag & SIGSIM_RNA ? 1 : 0;
 
     set_header_attributes(sp, rna);
     set_header_aux_fields(sp);

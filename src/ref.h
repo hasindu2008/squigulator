@@ -12,13 +12,13 @@
 
 //todo : can make more efficient using bit encoding
 static inline uint32_t get_rank(char base) {
-    if (base == 'A' || base == 'a') { //todo: do we neeed simple alpha?
+    if (base == 'A' || base == 'a' || base == 'R' || base == 'W' || base == 'M' || base == 'D' || base == 'H' || base == 'V') {
         return 0;
-    } else if (base == 'C' || base == 'c') {
+    } else if (base == 'C' || base == 'c' || base == 'Y' || base == 'B') {
         return 1;
-    } else if (base == 'G' || base == 'g') {
+    } else if (base == 'G' || base == 'g' || base == 'S' || base == 'K') {
         return 2;
-    } else if (base == 'T' || base == 't') {
+    } else if (base == 'T' || base == 't' || base == 'U') {
         return 3;
     } else {
         WARNING("A None ACGT base found : %c", base);

@@ -39,11 +39,11 @@ ex ./sigsim test/nCoV-2019.reference.fasta -o a.slow5 -n 2 --seed 1 --ideal-time
 diff -q test/dna_ideal_time_slow5.exp a.slow5 || die "diff failed"
 
 echo "--ideal-amp"
-ex ./sigsim test/nCoV-2019.reference.fasta -o a.slow5 -n 2 --seed 1 --ideal-amp  -r 20000 || die "Running the tool failed"
+ex ./sigsim test/nCoV-2019.reference.fasta -o a.slow5 -n 2 --seed 1 --ideal-amp  -r 20000  --dwell-std 5.0 || die "Running the tool failed"
 diff -q test/dna_ideal_amp_slow5.exp a.slow5 || die "diff failed"
 
 echo "--prefix=yes"
-ex ./sigsim test/nCoV-2019.reference.fasta -o a.slow5 -n 2 --seed 1 --prefix=yes  -r 20000 || die "Running the tool failed"
+ex ./sigsim test/nCoV-2019.reference.fasta -o a.slow5 -n 2 --seed 1 --prefix=yes  -r 20000  --dwell-std 5.0 || die "Running the tool failed"
 diff -q test/dna_prefix_slow5.exp a.slow5 || die "diff failed"
 
 echo "--prefix=no"
@@ -51,7 +51,7 @@ ex ./sigsim -x rna-r9-prom test/rnasequin_sequences_2.4.fa -o a.slow5 -n 2 --see
 diff -q test/rna_prefixno_slow5.exp a.slow5 || die "diff failed"
 
 echo "--full-contigs"
-ex ./sigsim test/nCoV-2019.reference.fasta -o a.slow5 --seed 1 --full-contigs || die "Running the tool failed"
+ex ./sigsim test/nCoV-2019.reference.fasta -o a.slow5 --seed 1 --full-contigs  --dwell-std 5.0 || die "Running the tool failed"
 diff -q test/dna_full_contig.exp a.slow5 || die "diff failed"
 
 

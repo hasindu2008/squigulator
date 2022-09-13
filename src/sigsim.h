@@ -33,6 +33,43 @@
 #define SIGSIM_IDEAL_AMP 0x010 //signal with no time amplitude domain noise
 #define SIGSIM_PREFIX 0x020 //generate prefix or not
 
+#define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
+#define STEAL_THRESH 1 //stealing threshold
+
+
+typedef struct{
+    char **ref_names;
+    int32_t *ref_lengths;
+    char **ref_seq;
+    int num_ref;
+    int64_t sum;
+} ref_t;
+
+typedef struct{
+    double m;
+    double s;
+    int64_t x;
+} nrng_t;
+
+typedef struct{
+    double a;
+    double b;
+    int64_t x;
+} grng_t;
+
+typedef struct {
+    double digitisation;
+    double sample_rate;
+    //double bases_per_second;
+    double range;
+    double offset_mean;
+    double offset_std;
+    double median_before_mean;
+    double median_before_std;
+    double dwell_mean;
+    double dwell_std;
+} profile_t;
+
 typedef struct {
     int32_t num_ref;
     char **ref_names;
@@ -59,6 +96,89 @@ typedef struct {
 #endif
 } model_t;
 
+typedef struct{
+    //int8_t ideal;
+    //int8_t full_contigs;
+    //int8_t ideal_time;
+    //int8_t ideal_amp;
 
+    int32_t rlen;
+    int64_t seed;
+
+    //int8_t rna;
+    const char *model_file;
+    //int8_t prefix;
+
+    uint32_t flag;
+
+    int32_t num_thread; //t
+    int32_t batch_size; //K
+
+} opt_t;
+
+typedef struct {
+
+    int64_t *ref_pos;
+    int64_t *rand_strand;
+    nrng_t **rand_time;
+    grng_t **rand_rlen;
+    nrng_t **rand_offset;
+    nrng_t **rand_median_before;
+
+    profile_t profile;
+    model_t *model;
+    nrng_t ***kmer_gen;
+    uint32_t kmer_size;
+    uint32_t num_kmer;
+
+    //opt
+    opt_t opt;
+
+    //files
+    FILE *fp_fasta;
+    slow5_file_t *sp;
+
+    //reference
+    ref_t *ref;
+
+    double process_db_time;
+    double output_time;
+
+    //stats //set by output_db
+    int64_t n_samples;
+    int64_t total_reads;
+
+} core_t;
+
+
+/* a batch of read data (dynamic data based on the reads) */
+typedef struct {
+
+    int32_t n_rec;
+    int32_t capacity_rec;
+
+    void **mem_records;
+    size_t *mem_bytes;
+
+    char **fasta;
+
+    int64_t n_samples;
+
+} db_t;
+
+
+/* argument wrapper for the multithreaded framework used for data processing */
+typedef struct {
+    core_t* core;
+    db_t* db;
+    int32_t starti;
+    int32_t endi;
+    void (*func)(core_t*,db_t*,int,int);
+    int32_t thread_index;
+#ifdef WORK_STEAL
+    void *all_pthread_args;
+#endif
+
+} pthread_arg_t;
 
 #endif

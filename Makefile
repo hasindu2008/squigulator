@@ -14,6 +14,7 @@ OBJ = $(BUILD_DIR)/main.o \
       $(BUILD_DIR)/model.o \
 	  $(BUILD_DIR)/misc.o \
 	  $(BUILD_DIR)/sim.o \
+	  $(BUILD_DIR)/thread.o \
 
 PREFIX = /usr/local
 VERSION = `git describe --tags`
@@ -34,8 +35,8 @@ $(BUILD_DIR)/main.o: src/main.c src/misc.h src/error.h  src/sigsim.h
 $(BUILD_DIR)/model.o: src/model.c src/model.h  src/misc.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
-# $(BUILD_DIR)/genref.o: src/genref.c src/ref.h
-# 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+$(BUILD_DIR)/thread.o: src/thread.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/misc.o: src/misc.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@

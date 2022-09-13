@@ -14,39 +14,6 @@
 #include "kseq.h"
 KSEQ_INIT(gzFile, gzread)
 
-typedef struct{
-    char **ref_names;
-    int32_t *ref_lengths;
-    char **ref_seq;
-    int num_ref;
-    int64_t sum;
-} ref_t;
-
-typedef struct{
-    double m;
-    double s;
-    int64_t x;
-} nrng_t;
-
-typedef struct{
-    double a;
-    double b;
-    int64_t x;
-} grng_t;
-
-typedef struct {
-    double digitisation;
-    double sample_rate;
-    //double bases_per_second;
-    double range;
-    double offset_mean;
-    double offset_std;
-    double median_before_mean;
-    double median_before_std;
-    double dwell_mean;
-    double dwell_std;
-} profile_t;
-
 profile_t minion_r9_dna_prof = {
     .digitisation = 8192,
     .sample_rate = 4000,
@@ -100,42 +67,6 @@ const char* polya = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 const char *adaptor_dna = "GGCGTCTGCTTGGGTGTTTAACCTTTTTTTTTTAATGTACTTCGTTCAGTTACGTATTGCT";
 const char *adaptor_rna = "TGATGATGAGGGATAGACGATGGTTGTTTCTGTTGGTGCTGATATTGCTTTTTTTTTTTTTATGATGCAAGATACGCAC";
 
-typedef struct{
-    //int8_t ideal;
-    //int8_t full_contigs;
-    //int8_t ideal_time;
-    //int8_t ideal_amp;
-
-    int32_t rlen;
-    int64_t seed;
-
-    //int8_t rna;
-    const char *model_file;
-    //int8_t prefix;
-
-    uint32_t flag;
-
-} opt_sim_t;
-
-typedef struct {
-
-    int64_t ref_pos;
-    int64_t rand_strand;
-    nrng_t *rand_time;
-    grng_t *rand_rlen;
-    nrng_t *rand_offset;
-    nrng_t *rand_median_before;
-    profile_t profile;
-    model_t *model;
-    nrng_t **kmer_gen;
-    uint32_t kmer_size;
-    uint32_t num_kmer;
-
-    //opt
-    opt_sim_t opt;
-
-} core_sim_t;
-
 static struct option long_options[] = {
     {"verbose", required_argument, 0, 'v'},        //0 verbosity level [1]
     {"help", no_argument, 0, 'h'},                 //1
@@ -154,10 +85,12 @@ static struct option long_options[] = {
     {"kmer-model", required_argument, 0, 0},       //14 custom nucleotide k-mer model file
     {"prefix", required_argument, 0, 0},                 //15 prefix such as adaptor
     {"dwell-std", required_argument, 0, 0 },       //16 dwell std
+    {"threads", required_argument, 0, 't'},        //17 number of threads [8]
+    {"batchsize", required_argument, 0, 'K'},      //18 batchsize - number of reads loaded at once [1000]
     {0, 0, 0, 0}};
 
 
-profile_t set_profile(char *prof_name, opt_sim_t *opt){
+profile_t set_profile(char *prof_name, opt_t *opt){
     //opt->rna = 0;
     if(strcmp(prof_name, "dna-r9-min") == 0){
         return minion_r9_dna_prof;
@@ -175,9 +108,8 @@ profile_t set_profile(char *prof_name, opt_sim_t *opt){
     }
 }
 
-
 //parse yes or no arguments : taken from minimap2
-static inline void yes_or_no(opt_sim_t* opt, uint64_t flag, int long_idx, const char* arg, int yes_to_set)
+static inline void yes_or_no(opt_t* opt, uint64_t flag, int long_idx, const char* arg, int yes_to_set)
 {
     if (yes_to_set) {
         if (strcmp(arg, "yes") == 0 || strcmp(arg, "y") == 0) {
@@ -250,7 +182,7 @@ static double grng(grng_t *r){
     return s*(r->b);
 }
 
-static void init_opt_sim(opt_sim_t *opt){
+static void init_opt(opt_t *opt){
     //opt->ideal = 0;
     //opt->ideal_time = 0;
     //opt->ideal_amp = 0;
@@ -261,59 +193,9 @@ static void init_opt_sim(opt_sim_t *opt){
     opt->model_file = NULL;
     //opt->prefix = 0;
     opt->flag = 0;
+    opt->num_thread = 1;
+    opt->batch_size = 1000;
 }
-
-static core_sim_t *init_core_sim(opt_sim_t opt, profile_t p){
-    core_sim_t *core = (core_sim_t *)malloc(sizeof(core_sim_t));
-    core->opt = opt;
-
-    core->profile = p;
-    model_t *m = core->model = (model_t*)malloc(sizeof(model_t) * MAX_NUM_KMER);
-    uint32_t k = 0;
-    if (opt.model_file) {
-        k=read_model(core->model, opt.model_file, MODEL_TYPE_NUCLEOTIDE);
-    } else {
-        if(opt.flag & SIGSIM_RNA){
-            INFO("%s","builtin RNA nucleotide model loaded");
-            k=set_model(core->model, MODEL_ID_RNA_NUCLEOTIDE);
-        }
-        else{
-            k=set_model(core->model, MODEL_ID_DNA_NUCLEOTIDE);
-        }
-    }
-
-    core->kmer_size = k;
-    uint32_t n = core->num_kmer = (uint32_t)(1 << 2*k);
-
-    core->ref_pos = opt.seed;
-    core->rand_strand = opt.seed+1;
-    core->rand_time = init_nrng(opt.seed+2, p.dwell_mean, p.dwell_std);
-    core->rand_rlen = init_grng(opt.seed+3, 2.0, opt.rlen/2);
-    core->rand_offset = init_nrng(opt.seed+4, p.offset_mean, p.offset_std);
-    core->rand_median_before = init_nrng(opt.seed+5, p.median_before_mean, p.median_before_std);
-
-    core->kmer_gen = (nrng_t **)malloc(sizeof(nrng_t *) * n);
-    for (uint32_t i = 0; i < n; i++){
-        core->kmer_gen[i] = init_nrng(opt.seed+i, m[i].level_mean, m[i].level_stdv);
-    }
-
-    return core;
-}
-
-void free_core_sim(core_sim_t *core){
-    for (uint32_t i = 0; i < core->num_kmer; i++){
-        free_nrng(core->kmer_gen[i]);
-    }
-    free(core->kmer_gen);
-
-    free(core->model);
-    free_nrng(core->rand_time);
-    free_grng(core->rand_rlen);
-    free_nrng(core->rand_offset);
-    free_nrng(core->rand_median_before);
-    free(core);
-}
-
 
 //todo can be optimised for memory by better encoding if necessary
 static ref_t *load_ref(const char *genome){
@@ -378,7 +260,6 @@ static void free_ref_sim(ref_t *ref){
     free(ref->ref_seq);
     free(ref);
 }
-
 
 
 static void set_header_attributes(slow5_file_t *sp, int8_t rna){
@@ -473,6 +354,171 @@ static void set_header_aux_fields(slow5_file_t *sp){
 
 }
 
+static void init_rand(core_t *core){
+
+    uint32_t n = core->num_kmer;
+    model_t *m = core->model;
+    opt_t opt = core->opt;
+    int t = opt.num_thread;
+    profile_t p = core->profile;
+
+    core->ref_pos  = (int64_t *) malloc(t*sizeof(int64_t));
+    core->rand_strand = (int64_t *) malloc(t*sizeof(int64_t));
+    core->rand_time = (nrng_t **) malloc(t*sizeof(nrng_t *));
+    core->rand_rlen = (grng_t **) malloc(t*sizeof(grng_t *));
+    core->rand_offset = (nrng_t **) malloc(t*sizeof(nrng_t *));
+    core->rand_median_before = (nrng_t **) malloc(t*sizeof(nrng_t *));
+    core->kmer_gen = (nrng_t ***) malloc(t*sizeof(nrng_t **));
+
+    int64_t seed = opt.seed;
+    for(int i=0; i<t; i++){
+        core->ref_pos[i] = seed;
+        core->rand_strand[i] = seed+1;
+        core->rand_time[i] = init_nrng(seed+2, p.dwell_mean, p.dwell_std);
+        core->rand_rlen[i] = init_grng(seed+3, 2.0, opt.rlen/2);
+        core->rand_offset[i] = init_nrng(seed+4, p.offset_mean, p.offset_std);
+        core->rand_median_before[i] = init_nrng(seed+5, p.median_before_mean, p.median_before_std);
+
+        core->kmer_gen[i] = (nrng_t **)malloc(sizeof(nrng_t *) * n);
+        for (uint32_t j = 0; j < n; j++){
+            core->kmer_gen[i][j] = init_nrng(seed+j, m[j].level_mean, m[j].level_stdv);
+        }
+
+        seed += (n+10);
+    }
+}
+
+static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_file, char *fasta){
+    core_t *core = (core_t *)malloc(sizeof(core_t));
+    core->opt = opt;
+
+    core->profile = p;
+    core->model = (model_t*)malloc(sizeof(model_t) * MAX_NUM_KMER);
+    uint32_t k = 0;
+    if (opt.model_file) {
+        k=read_model(core->model, opt.model_file, MODEL_TYPE_NUCLEOTIDE);
+    } else {
+        if(opt.flag & SIGSIM_RNA){
+            INFO("%s","builtin RNA nucleotide model loaded");
+            k=set_model(core->model, MODEL_ID_RNA_NUCLEOTIDE);
+        }
+        else{
+            k=set_model(core->model, MODEL_ID_DNA_NUCLEOTIDE);
+        }
+    }
+
+    core->kmer_size = k;
+    core->num_kmer = (uint32_t)(1 << 2*k);
+
+    init_rand(core);
+
+    core->ref = load_ref(refname);
+
+    core->sp = slow5_open(output_file, "w");
+    if(core->sp==NULL){
+        ERROR("Error opening file %s!\n",output_file);
+        exit(EXIT_FAILURE);
+    }
+
+    set_header_attributes(core->sp, opt.flag & SIGSIM_RNA ? 1 : 0);
+    set_header_aux_fields(core->sp);
+
+    if(slow5_hdr_write(core->sp) < 0){
+        ERROR("%s","Error writing header!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    core->fp_fasta = NULL;
+    if(fasta){
+        core->fp_fasta = fopen(fasta,"w");
+        if(core->fp_fasta==NULL){
+            fprintf(stderr, "Error opening file %s\n",fasta);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    core->n_samples = 0;
+
+    return core;
+}
+
+void free_core(core_t *core){
+
+    for(int i=0; i<core->opt.num_thread; i++){
+        free_nrng(core->rand_time[i]);
+        free_grng(core->rand_rlen[i]);
+        free_nrng(core->rand_offset[i]);
+        free_nrng(core->rand_median_before[i]);
+        for (uint32_t j = 0; j < core->num_kmer; j++){
+            free_nrng(core->kmer_gen[i][j]);
+        }
+        free(core->kmer_gen[i]);
+    }
+
+
+
+    free(core->kmer_gen);
+    free(core->rand_time);
+    free(core->rand_rlen);
+    free(core->rand_offset);
+    free(core->rand_median_before);
+    free(core->ref_pos);
+    free(core->rand_strand);
+
+    free(core->model);
+
+    if(core->fp_fasta){
+        fclose(core->fp_fasta);
+    }
+    slow5_close(core->sp);
+    free_ref_sim(core->ref);
+
+    free(core);
+}
+
+
+/* initialise a data batch */
+db_t* init_db(core_t* core, int32_t n_rec) {
+    db_t* db = (db_t*)(malloc(sizeof(db_t)));
+    MALLOC_CHK(db);
+
+    db->capacity_rec = core->opt.batch_size;
+    db->n_rec = n_rec;
+
+    db->mem_records = (void**)(calloc(db->capacity_rec,sizeof(void*)));
+    MALLOC_CHK(db->mem_records);
+    db->mem_bytes = (size_t*)(calloc(db->capacity_rec,sizeof(size_t)));
+    MALLOC_CHK(db->mem_bytes);
+    if(core->fp_fasta){
+        db->fasta = (char**)(calloc(db->capacity_rec,sizeof(char*)));
+        MALLOC_CHK(db->fasta);
+    } else {
+        db->fasta = NULL;
+    }
+
+    return db;
+}
+
+/* completely free a data batch */
+void free_db(db_t* db) {
+
+    int32_t i = 0;
+    for (i = 0; i < db->n_rec; ++i) {
+        free(db->mem_records[i]);
+        if(db->fasta){
+            free(db->fasta[i]);
+        }
+    }
+
+    free(db->mem_records);
+    free(db->mem_bytes);
+    if(db->fasta){
+        free(db->fasta);
+    }
+
+    free(db);
+}
+
 static void set_record_primary_fields(profile_t *profile, slow5_rec_t *slow5_record, char *read_id, double offset, int64_t len_raw_signal, int16_t *raw_signal){
 
     slow5_record -> read_id = read_id;
@@ -547,7 +593,7 @@ void gen_prefix_dna(int16_t *raw_signal, int64_t* n, int64_t *c, profile_t *prof
 }
 
 
-int16_t * gen_sig_core_seq(core_sim_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset, const char *read, int32_t len){
+int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset, const char *read, int32_t len, int tid){
 
     profile_t *profile = &core->profile;
     uint32_t kmer_size = core->kmer_size;
@@ -568,7 +614,7 @@ int16_t * gen_sig_core_seq(core_sim_t *core, int16_t *raw_signal, int64_t* n, in
     for (int i=0; i< n_kmers; i++){
         uint32_t kmer_rank = get_kmer_rank(read+i, kmer_size);
         if(!(ideal || ideal_time)){
-            sps = round(nrng(core->rand_time));
+            sps = round(nrng(core->rand_time[tid]));
             //fprintf(stderr,"%d %d %d %d\n",*n,n_kmers,*c,sps);
         }
         for(int j=0; j<sps; j++){
@@ -580,7 +626,7 @@ int16_t * gen_sig_core_seq(core_sim_t *core, int16_t *raw_signal, int64_t* n, in
             if(ideal || ideal_amp){
                 s=pore_model[kmer_rank].level_mean;
             } else {
-                s=nrng(core->kmer_gen[kmer_rank]);
+                s=nrng(core->kmer_gen[tid][kmer_rank]);
             }
             raw_signal[*n] = s*(profile->digitisation)/(profile->range)-(offset);
             *n = *n+1;
@@ -590,7 +636,7 @@ int16_t * gen_sig_core_seq(core_sim_t *core, int16_t *raw_signal, int64_t* n, in
 
 }
 
-int16_t *gen_prefix_rna(core_sim_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset){
+int16_t *gen_prefix_rna(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset, int tid){
 
     profile_t *profile = &core->profile;
     //float s;
@@ -608,13 +654,13 @@ int16_t *gen_prefix_rna(core_sim_t *core, int16_t *raw_signal, int64_t* n, int64
     }
 
     const char *stall = "AAAAAGAAAAAACCCCCCCCCCCCCCCCCC";
-    raw_signal=gen_sig_core_seq(core, raw_signal, n, c, offset, stall, strlen(stall));
+    raw_signal=gen_sig_core_seq(core, raw_signal, n, c, offset, stall, strlen(stall), tid);
 
 
     return raw_signal;
 }
 
-char *attach_prefix(core_sim_t *core, const char *read, int32_t *len){
+char *attach_prefix(core_t *core, const char *read, int32_t *len){
 
     char *s = (char *)read;
     if(core->opt.flag & SIGSIM_RNA){
@@ -642,7 +688,7 @@ char *attach_prefix(core_sim_t *core, const char *read, int32_t *len){
     return s;
 }
 
-int16_t *gen_sig_core(core_sim_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal){
+int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int tid){
 
     profile_t *profile = &core->profile;
     uint32_t kmer_size = core->kmer_size;
@@ -664,8 +710,8 @@ int16_t *gen_sig_core(core_sim_t *core, const char *read, int32_t len, double *o
         *offset = profile->offset_mean;
         *median_before = profile->median_before_mean;
     } else {
-        *offset = nrng(core->rand_offset);
-        *median_before = nrng(core->rand_median_before);
+        *offset = nrng(core->rand_offset[tid]);
+        *median_before = nrng(core->rand_median_before[tid]);
     }
 
     //todo adaptor sequence and prefix
@@ -679,10 +725,10 @@ int16_t *gen_sig_core(core_sim_t *core, const char *read, int32_t len, double *o
     }
     //fprintf(stderr, "read: %s\n", read);
 
-    raw_signal = gen_sig_core_seq(core, raw_signal, &n, &c, *offset, read, len);
+    raw_signal = gen_sig_core_seq(core, raw_signal, &n, &c, *offset, read, len, tid);
 
     if(core->opt.flag & SIGSIM_PREFIX && core->opt.flag & SIGSIM_RNA){
-        raw_signal=gen_prefix_rna(core, raw_signal,&n,&c, *offset);
+        raw_signal=gen_prefix_rna(core, raw_signal,&n,&c, *offset, tid);
     }
     if(tmpread){
         free(tmpread);
@@ -694,8 +740,8 @@ int16_t *gen_sig_core(core_sim_t *core, const char *read, int32_t len, double *o
 }
 
 
-static inline int16_t *gen_sig(core_sim_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int8_t rna){
-    int16_t *sig = gen_sig_core(core, read, len, offset, median_before, len_raw_signal);
+static inline int16_t *gen_sig(core_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int8_t rna, int tid){
+    int16_t *sig = gen_sig_core(core, read, len, offset, median_before, len_raw_signal, tid);
     if(rna){
         for(int i=0; i<*len_raw_signal/2; i++){
             int16_t tmp = sig[i];
@@ -727,13 +773,13 @@ static inline int32_t is_bad_read(char *seq, int32_t len){
     return 0;
 }
 
-char *gen_read_dna(core_sim_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, int32_t *rlen, char *c){
+char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, int32_t *rlen, char *c, int tid){
 
     char *seq = NULL;
     while(1){
 
-        int len = grng(core->rand_rlen);
-        int64_t ref_sum_pos = round(rng(&core->ref_pos)*ref->sum); //serialised pos
+        int len = grng(core->rand_rlen[tid]);
+        int64_t ref_sum_pos = round(rng(&core->ref_pos[tid])*ref->sum); //serialised pos
         assert(ref_sum_pos <= ref->sum);
         int64_t s = 0;
         int seq_i = 0;
@@ -747,7 +793,7 @@ char *gen_read_dna(core_sim_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos
         }
         assert(s<=ref->sum);
 
-        int64_t strand = round(rng(&core->rand_strand));
+        int64_t strand = round(rng(&core->rand_strand[tid]));
         *c = strand ? '+' : '-';
 
         seq= (char *)malloc((len+1)*sizeof(char));
@@ -777,19 +823,16 @@ char *gen_read_dna(core_sim_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos
     }
 
     return seq;
-
 }
 
-
-char *gen_read_rna(core_sim_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, int32_t *rlen, char *c){
-
+char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, int32_t *rlen, char *c, int tid){
 
     char *seq = NULL;
     while(1){
 
         //int len = grng(core->rand_rlen); //for now the whole transcript is is simulated
 
-        int seq_i = round(rng(&core->ref_pos)*(ref->num_ref-1)); //random transcript
+        int seq_i = round(rng(&core->ref_pos[tid])*(ref->num_ref-1)); //random transcript
         int len = ref->ref_lengths[seq_i];
         *ref_pos=0;
         *ref_id = ref->ref_names[seq_i];
@@ -821,15 +864,115 @@ char *gen_read_rna(core_sim_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos
 
 }
 
-
-
-static inline char *gen_read(core_sim_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, int32_t *rlen, char *c, int8_t rna){
-    return rna ? gen_read_rna(core, ref, ref_id, ref_pos, rlen, c): gen_read_dna(core, ref, ref_id, ref_pos, rlen, c);
+static inline char *gen_read(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, int32_t *rlen, char *c, int8_t rna, int tid){
+    return rna ? gen_read_rna(core, ref, ref_id, ref_pos, rlen, c, tid): gen_read_dna(core, ref, ref_id, ref_pos, rlen, c, tid);
 }
+
+/* process the ith read in the batch db */
+void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
+
+    opt_t opt = core->opt;
+    ref_t *ref = core->ref;
+    slow5_file_t *sp = core->sp;
+
+    int8_t rna = opt.flag & SIGSIM_RNA ? 1 : 0;
+
+    double median_before = 0;
+    double offset = 0;
+    int64_t len_raw_signal =0;
+    char *rid = NULL;
+    char *seq = NULL;
+    int32_t rlen = 0;
+    char strand = '+';
+    int32_t ref_pos_st = 0;
+    int32_t ref_pos_end = 0;
+
+    slow5_rec_t *slow5_record = slow5_rec_init();
+
+    if(slow5_record == NULL){
+        fprintf(stderr,"Could not allocate space for a slow5 record.");
+        exit(EXIT_FAILURE);
+    }
+
+    if(opt.flag & SIGSIM_FULL_CONTIG){
+        rid = ref->ref_names[i];
+        rlen = ref->ref_lengths[i];
+        seq = ref->ref_seq[i];
+        strand = '+';
+        ref_pos_st = 0;
+        ref_pos_end = rlen;
+    } else {
+        seq=gen_read(core, ref, &rid, &ref_pos_st, &rlen, &strand, rna, tid);
+        ref_pos_end = ref_pos_st+rlen;
+    }
+    int16_t *raw_signal=gen_sig(core, seq, rlen, &offset, &median_before, &len_raw_signal, rna, tid);
+    assert(raw_signal != NULL && len_raw_signal > 0);
+
+    char *read_id= (char *)malloc(sizeof(char)*(10000));
+    sprintf(read_id,"S1_%d!%s!%d!%d!%c",i+1, rid, ref_pos_st, ref_pos_end, strand);
+    if(core->fp_fasta){
+        db->fasta[i] = (char *)malloc(sizeof(char)*(strlen(read_id)+strlen(seq)+10)); //+10 bit inefficent - for now
+        sprintf(db->fasta[i],">%s\n%s\n",read_id,seq);
+    }
+
+    int64_t n_samples = __sync_fetch_and_add(&core->n_samples, len_raw_signal);
+    set_record_primary_fields(&core->profile, slow5_record, read_id, offset, len_raw_signal, raw_signal);
+    set_record_aux_fields(slow5_record, sp, median_before, i, n_samples);
+
+    //encode to a buffer
+    if (slow5_encode(&db->mem_records[i], &db->mem_bytes[i], slow5_record, sp) < 0){
+        fprintf(stderr,"Error encoding record\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if(!(opt.flag & SIGSIM_FULL_CONTIG)){
+        free(seq);
+    }
+    slow5_rec_free(slow5_record);
+
+
+}
+
+void work_db(core_t* core, db_t* db, void (*func)(core_t*,db_t*,int,int));
+
+void process_db(core_t* core,db_t* db){
+    double proc_start = realtime();
+    work_db(core, db, work_per_single_read);
+    double proc_end = realtime();
+    core->process_db_time += (proc_end-proc_start);
+}
+
+
+/* write the output for a processed data batch */
+void output_db(core_t* core, db_t* db) {
+
+    double output_start = realtime();
+
+    int32_t i = 0;
+    for (i = 0; i < db->n_rec; i++) {
+
+        //write the buffer
+        if (slow5_write_bytes(db->mem_records[i], db->mem_bytes[i], core->sp) < 0){
+            fprintf(stderr,"Error writing record!\n");
+            exit(EXIT_FAILURE);
+        }
+        if(core->fp_fasta){
+            fprintf(core->fp_fasta,"%s",db->fasta[i]);
+        }
+    }
+
+    core->total_reads += db->n_rec;
+
+    //core->read_index = core->read_index + db->n_rec;
+    double output_end = realtime();
+    core->output_time += (output_end-output_start);
+
+}
+
 
 int sim_main(int argc, char* argv[], double realtime0) {
 
-    const char* optstring = "o:hVn:q:r:x:v:";
+    const char* optstring = "o:hVn:q:r:x:v:K:t:";
 
     int longindex = 0;
     int32_t c = -1;
@@ -838,12 +981,12 @@ int sim_main(int argc, char* argv[], double realtime0) {
     char *output_file = NULL;
     char *fasta = NULL;
 
-    opt_sim_t opt;
-    init_opt_sim(&opt);
+    opt_t opt;
+    init_opt(&opt);
 
     profile_t p = prom_r9_dna_prof;
 
-    int nreads = 4000;
+    int64_t nreads = 4000;
 
     int8_t opt_n_gvn = 0;
     int8_t opt_r_gvn = 0;
@@ -877,6 +1020,18 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if (c == 'r'){
             opt.rlen = atoi(optarg);
             opt_r_gvn = 1;
+        } else if (c == 'K') {
+            opt.batch_size = atoi(optarg);
+            if (opt.batch_size < 1) {
+                ERROR("Batch size should larger than 0. You entered %d",opt.batch_size);
+                exit(EXIT_FAILURE);
+            }
+        } else if (c == 't') {
+            opt.num_thread = atoi(optarg);
+            if (opt.num_thread < 1) {
+                ERROR("Number of threads should larger than 0. You entered %d", opt.num_thread);
+                exit(EXIT_FAILURE);
+            }
         } else if (c == 0 && longindex == 9){  //seed
             opt.seed = atoi(optarg);
         } else if (c == 0 && longindex == 10){ //ideal-time
@@ -900,9 +1055,12 @@ int sim_main(int argc, char* argv[], double realtime0) {
         fprintf(fp_help,"   -o FILE                    SLOW5/BLOW5 file to write\n");
         fprintf(fp_help,"   -x STR                     parameter profile (always applied before other options) [dna-r9-prom]\n");
         fprintf(fp_help,"                              e.g., dna-r9-min, dna-r9-prom, rna-r9-min, rna-r9-prom\n");
-        fprintf(fp_help,"   -n INT                     Number of reads to simulate [%d]\n", nreads);
+        fprintf(fp_help,"   -n INT                     Number of reads to simulate [%ld]\n", nreads);
         fprintf(fp_help,"   -q FILE                    FASTA file to write simulated reads with no errors\n");
         fprintf(fp_help,"   -r INT                     Mean read length (estimate only, unused for direct RNA) [%d]\n",opt.rlen);
+        fprintf(fp_help,"   -t INT                     number of threads [%d]\n",opt.num_thread);
+        fprintf(fp_help,"   -K INT                     batch size (max number of reads created at once) [%d]\n",opt.batch_size);
+
         fprintf(fp_help,"   -h                         help\n");
         fprintf(fp_help,"   --ideal                    Generate ideal signals with no noise\n");
         fprintf(fp_help,"   --version                  print version\n");
@@ -944,106 +1102,30 @@ int sim_main(int argc, char* argv[], double realtime0) {
     }
 
     char *refname = argv[optind];
-    ref_t *ref = load_ref(refname);
 
-    slow5_file_t *sp = slow5_open(output_file, "w");
-    if(sp==NULL){
-        ERROR("Error opening file %s!\n",output_file);
-        exit(EXIT_FAILURE);
-    }
+    int64_t n = nreads;
 
-    set_header_attributes(sp, rna);
-    set_header_aux_fields(sp);
-
-    if(slow5_hdr_write(sp) < 0){
-        ERROR("%s","Error writing header!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    int n = nreads;
-    double median_before = 0;
-    int64_t n_samples = 0;
-    double offset = 0;
-    int64_t len_raw_signal =0;
-    char *rid = NULL;
-    char *seq = NULL;
-    int32_t rlen = 0;
-    char strand = '+';
-    int32_t ref_pos_st = 0;
-    int32_t ref_pos_end = 0;
+    core_t *core = init_core(opt, p, refname, output_file, fasta);
 
     if(opt.flag & SIGSIM_FULL_CONTIG){
-        n = ref->num_ref;
+        n = core->ref->num_ref;
     }
 
-    core_sim_t *core = init_core_sim(opt, p);
-
-    FILE *fp_fasta = NULL;
-    if(fasta){
-        fp_fasta = fopen(fasta,"w");
-        if(fp_fasta==NULL){
-            fprintf(stderr, "Error opening file %s\n",fasta);
-            exit(EXIT_FAILURE);
-        }
+    int64_t done = 0;
+    while(done < n){
+        int64_t batch = n-done < opt.batch_size  ? n-done : opt.batch_size;
+        assert(batch > 0);
+        db_t *db = init_db(core, batch);
+        process_db(core, db);
+        output_db(core, db);
+        free_db(db);
+        done += batch;
+        VERBOSE("%ld/%ld reads done",done,n);
     }
+    assert(done == n);
 
-    for(int i=0;i<n;i++){
+    free_core(core);
 
-        slow5_rec_t *slow5_record = slow5_rec_init();
-        if(slow5_record == NULL){
-            fprintf(stderr,"Could not allocate space for a slow5 record.");
-            exit(EXIT_FAILURE);
-        }
-
-        if(opt.flag & SIGSIM_FULL_CONTIG){
-            rid = ref->ref_names[i];
-            rlen = ref->ref_lengths[i];
-            seq = ref->ref_seq[i];
-            strand = '+';
-            ref_pos_st = 0;
-            ref_pos_end = rlen;
-        } else {
-            seq=gen_read(core, ref, &rid, &ref_pos_st, &rlen, &strand, rna);
-            ref_pos_end = ref_pos_st+rlen;
-        }
-        int16_t *raw_signal=gen_sig(core, seq, rlen, &offset, &median_before, &len_raw_signal, rna);
-        assert(raw_signal != NULL && len_raw_signal > 0);
-
-        char *read_id= (char *)malloc(sizeof(char)*(1000));
-        sprintf(read_id,"S1_%d!%s!%d!%d!%c",i+1, rid, ref_pos_st, ref_pos_end, strand);
-        if(fasta){
-            fprintf(fp_fasta,">%s\n",read_id);
-            fprintf(fp_fasta,"%s\n",seq);
-        }
-
-        set_record_primary_fields(&core->profile, slow5_record, read_id, offset, len_raw_signal, raw_signal);
-        set_record_aux_fields(slow5_record, sp, median_before, i, n_samples);
-        n_samples+=len_raw_signal;
-
-        if (slow5_write(slow5_record, sp) < 0){
-            fprintf(stderr,"Error writing record!\n");
-            exit(EXIT_FAILURE);
-        }
-
-        if(!(opt.flag & SIGSIM_FULL_CONTIG)){
-            free(seq);
-        }
-        slow5_rec_free(slow5_record);
-
-        if((i+1)%1000==0) {
-            VERBOSE("%d reads done",i+1);
-        }
-
-    }
-
-    if(fasta){
-        fclose(fp_fasta);
-    }
-
-    free_core_sim(core);
-
-    slow5_close(sp);
-    free_ref_sim(ref);
 
     return 0;
 }

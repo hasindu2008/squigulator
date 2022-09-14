@@ -7,7 +7,7 @@
 #include <string.h>
 #include <signal.h>
 #include <assert.h>
-#include "sigsim.h"
+#include "sq.h"
 #include "misc.h"
 #include "error.h"
 
@@ -15,7 +15,7 @@
     #include <execinfo.h>
 #endif
 
-extern enum sigsim_log_level_opt sigsim_log_level;
+extern enum sq_log_level_opt sq_log_level;
 
 //make the segmentation faults a bit cool
 void sig_handler(int sig) {
@@ -49,7 +49,7 @@ int main(int argc, char* argv[]){
 
     int ret = sim_main(argc, argv, realtime0);
 
-    fprintf(stderr,"[%s] Version: %s\n", __func__,SIGSIM_VERSION);
+    fprintf(stderr,"[%s] Version: %s\n", __func__,SQ_VERSION);
     fprintf(stderr, "[%s] CMD:", __func__);
     for (int i = 0; i < argc; ++i) {
         fprintf(stderr, " %s", argv[i]);

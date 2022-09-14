@@ -1,14 +1,14 @@
-/* @file sigsim.h
+/* @file sq.h
 **
 ******************************************************************************/
 
-#ifndef SIGSIM_H
-#define SIGSIM_H
+#ifndef SQ_H
+#define SQ_H
 
 #include <stdint.h>
 #include "slow5/slow5.h"
 
-#define SIGSIM_VERSION "0.1.0"
+#define SQ_VERSION "0.1.0"
 
 //model types
 #define MODEL_TYPE_NUCLEOTIDE 1
@@ -26,12 +26,12 @@
  * flags related to the user specified options (opt_t) *
  *******************************************************/
 
-#define SIGSIM_RNA 0x001 //if RNA or not
-#define SIGSIM_FULL_CONTIG 0x002 //if fullcontigs
-#define SIGSIM_IDEAL 0x004 //if set, ideal signals with no noise
-#define SIGSIM_IDEAL_TIME 0x008 //signal with no time domain noise
-#define SIGSIM_IDEAL_AMP 0x010 //signal with no time amplitude domain noise
-#define SIGSIM_PREFIX 0x020 //generate prefix or not
+#define SQ_RNA 0x001 //if RNA or not
+#define SQ_FULL_CONTIG 0x002 //if fullcontigs
+#define SQ_IDEAL 0x004 //if set, ideal signals with no noise
+#define SQ_IDEAL_TIME 0x008 //signal with no time domain noise
+#define SQ_IDEAL_AMP 0x010 //signal with no time amplitude domain noise
+#define SQ_PREFIX 0x020 //generate prefix or not
 
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold
@@ -157,7 +157,7 @@ typedef struct {
     int32_t n_rec;
     int32_t capacity_rec;
 
-    void **mem_records;
+    char **mem_records;
     size_t *mem_bytes;
 
     char **fasta;

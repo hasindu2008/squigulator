@@ -651,13 +651,13 @@ enum slow5_aux_type *slow5_get_aux_types(const slow5_hdr_t *header,uint64_t *len
  */
 char **slow5_get_aux_enum_labels(const slow5_hdr_t *header, const char *field, uint8_t *n);
 
-int slow5_get_next_bytes(void **mem, size_t *bytes, slow5_file_t *s5p);
+int slow5_get_next_bytes(char **mem, size_t *bytes, slow5_file_t *s5p);
 
-int slow_decode(void **mem, size_t *bytes, slow5_rec_t **read, slow5_file_t *s5p);
+int slow5_decode(char **mem, size_t *bytes, slow5_rec_t **read, slow5_file_t *s5p);
 
-int slow5_encode(void **mem, size_t *bytes, slow5_rec_t *read, slow5_file_t *s5p);
+int slow5_encode(char **mem, size_t *bytes, slow5_rec_t *read, slow5_file_t *s5p);
 
-int slow5_write_bytes(void *mem, size_t bytes, slow5_file_t *s5p);
+int slow5_write_bytes(char *mem, size_t bytes, slow5_file_t *s5p);
 
 /*
 IMPORTANT: The following low-level API functions are not yet finalised or documented, until someone requests.

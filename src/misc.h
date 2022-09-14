@@ -142,10 +142,10 @@ static inline void drna_mismatch(slow5_file_t *sp, int8_t rna){
 
 #define TO_PICOAMPS(RAW_VAL,DIGITISATION,OFFSET,RANGE) (((RAW_VAL)+(OFFSET))*((RANGE)/(DIGITISATION)))
 
-#define SIGSIM_MEAN_VAL 104.6
-#define SIGSIM_STDV_VAL 20.39
-#define SIGSIM_WINDOW_SIZE 2000
-#define SIGSIM_SIZE 1000
+#define SQ_MEAN_VAL 104.6
+#define SQ_STDV_VAL 20.39
+#define SQ_WINDOW_SIZE 2000
+#define SQ_SIZE 1000
 
 typedef struct {
     int64_t x;

@@ -2,8 +2,8 @@
 **
 ******************************************************************************/
 
-#ifndef SIGSIM_REF_H
-#define SIGSIM_REF_H
+#ifndef SQ_REF_H
+#define SQ_REF_H
 
 #include <stdint.h>
 #include <stdio.h>

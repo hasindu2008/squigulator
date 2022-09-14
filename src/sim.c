@@ -7,7 +7,7 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "sigsim.h"
+#include "sq.h"
 #include "error.h"
 #include "ref.h"
 #include "misc.h"
@@ -97,10 +97,10 @@ profile_t set_profile(char *prof_name, opt_t *opt){
     }else if(strcmp(prof_name, "dna-r9-prom") == 0){
         return prom_r9_dna_prof;
     }else if(strcmp(prof_name, "rna-r9-min") == 0){
-        opt->flag |= SIGSIM_RNA;
+        opt->flag |= SQ_RNA;
         return minion_r9_rna_prof;
     }else if(strcmp(prof_name, "rna-r9-prom") == 0){
-        opt->flag |= SIGSIM_RNA;
+        opt->flag |= SQ_RNA;
         return prom_r9_rna_prof;
     }else{
         ERROR("Unknown profile: %s\n", prof_name);
@@ -193,7 +193,7 @@ static void init_opt(opt_t *opt){
     opt->model_file = NULL;
     //opt->prefix = 0;
     opt->flag = 0;
-    opt->num_thread = 1;
+    opt->num_thread = 8;
     opt->batch_size = 1000;
 }
 
@@ -398,7 +398,7 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
     if (opt.model_file) {
         k=read_model(core->model, opt.model_file, MODEL_TYPE_NUCLEOTIDE);
     } else {
-        if(opt.flag & SIGSIM_RNA){
+        if(opt.flag & SQ_RNA){
             INFO("%s","builtin RNA nucleotide model loaded");
             k=set_model(core->model, MODEL_ID_RNA_NUCLEOTIDE);
         }
@@ -420,7 +420,7 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
         exit(EXIT_FAILURE);
     }
 
-    set_header_attributes(core->sp, opt.flag & SIGSIM_RNA ? 1 : 0);
+    set_header_attributes(core->sp, opt.flag & SQ_RNA ? 1 : 0);
     set_header_aux_fields(core->sp);
 
     if(slow5_hdr_write(core->sp) < 0){
@@ -485,7 +485,7 @@ db_t* init_db(core_t* core, int32_t n_rec) {
     db->capacity_rec = core->opt.batch_size;
     db->n_rec = n_rec;
 
-    db->mem_records = (void**)(calloc(db->capacity_rec,sizeof(void*)));
+    db->mem_records = (char**)(calloc(db->capacity_rec,sizeof(void*)));
     MALLOC_CHK(db->mem_records);
     db->mem_bytes = (size_t*)(calloc(db->capacity_rec,sizeof(size_t)));
     MALLOC_CHK(db->mem_bytes);
@@ -599,9 +599,9 @@ int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_
     uint32_t kmer_size = core->kmer_size;
     model_t *pore_model = core->model;
 
-    int8_t ideal = core->opt.flag & SIGSIM_IDEAL;
-    int8_t ideal_time = core->opt.flag & SIGSIM_IDEAL_TIME;
-    int8_t ideal_amp = core->opt.flag & SIGSIM_IDEAL_AMP;
+    int8_t ideal = core->opt.flag & SQ_IDEAL;
+    int8_t ideal_time = core->opt.flag & SQ_IDEAL_TIME;
+    int8_t ideal_amp = core->opt.flag & SQ_IDEAL_AMP;
     int sps = (int)profile->dwell_mean;
 
     int64_t n_kmers = len-kmer_size+1;
@@ -663,7 +663,7 @@ int16_t *gen_prefix_rna(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *
 char *attach_prefix(core_t *core, const char *read, int32_t *len){
 
     char *s = (char *)read;
-    if(core->opt.flag & SIGSIM_RNA){
+    if(core->opt.flag & SQ_RNA){
         int polya_len = strlen(polya);
         int adapt_len = strlen(adaptor_rna);
         char *seq = malloc((*len+polya_len+adapt_len+1)*sizeof(char));
@@ -694,7 +694,7 @@ int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offse
     uint32_t kmer_size = core->kmer_size;
     //model_t *pore_model = core->model;
 
-    int8_t ideal = core->opt.flag & SIGSIM_IDEAL;
+    int8_t ideal = core->opt.flag & SQ_IDEAL;
     //int8_t ideal_time = core->opt.ideal_time;
     //int8_t ideal_amp = core->opt.ideal_amp;
 
@@ -720,14 +720,14 @@ int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offse
     // }
 
     char *tmpread = NULL;
-    if(core->opt.flag & SIGSIM_PREFIX){
+    if(core->opt.flag & SQ_PREFIX){
         read = tmpread = attach_prefix(core, read, &len);
     }
     //fprintf(stderr, "read: %s\n", read);
 
     raw_signal = gen_sig_core_seq(core, raw_signal, &n, &c, *offset, read, len, tid);
 
-    if(core->opt.flag & SIGSIM_PREFIX && core->opt.flag & SIGSIM_RNA){
+    if(core->opt.flag & SQ_PREFIX && core->opt.flag & SQ_RNA){
         raw_signal=gen_prefix_rna(core, raw_signal,&n,&c, *offset, tid);
     }
     if(tmpread){
@@ -875,7 +875,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
     ref_t *ref = core->ref;
     slow5_file_t *sp = core->sp;
 
-    int8_t rna = opt.flag & SIGSIM_RNA ? 1 : 0;
+    int8_t rna = opt.flag & SQ_RNA ? 1 : 0;
 
     double median_before = 0;
     double offset = 0;
@@ -894,7 +894,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         exit(EXIT_FAILURE);
     }
 
-    if(opt.flag & SIGSIM_FULL_CONTIG){
+    if(opt.flag & SQ_FULL_CONTIG){
         rid = ref->ref_names[i];
         rlen = ref->ref_lengths[i];
         seq = ref->ref_seq[i];
@@ -925,7 +925,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         exit(EXIT_FAILURE);
     }
 
-    if(!(opt.flag & SIGSIM_FULL_CONTIG)){
+    if(!(opt.flag & SQ_FULL_CONTIG)){
         free(seq);
     }
     slow5_rec_free(slow5_record);
@@ -996,11 +996,11 @@ int sim_main(int argc, char* argv[], double realtime0) {
     //parse the user args
     while ((c = getopt_long(argc, argv, optstring, long_options, &longindex)) >= 0) {
         if (c=='V'){
-            fprintf(stdout,"sigsim %s\n",SIGSIM_VERSION);
+            fprintf(stdout,"squigulator %s\n",SQ_VERSION);
             exit(EXIT_SUCCESS);
         }else if (c=='v'){
             int v = atoi(optarg);
-            set_log_level((enum sigsim_log_level_opt)v);
+            set_log_level((enum sq_log_level_opt)v);
         } else if (c=='h'){
             fp_help = stdout;
         } else if (c=='x'){
@@ -1008,9 +1008,9 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if(c == 'o'){
             output_file=optarg;
         } else if (c == 0 && longindex == 4){   //generate ideal signal
-            opt.flag |= SIGSIM_IDEAL;
+            opt.flag |= SQ_IDEAL;
         } else if (c == 0 && longindex == 5){  //generate signal for complete contigs
-            opt.flag |= SIGSIM_FULL_CONTIG;
+            opt.flag |= SQ_FULL_CONTIG;
             opt_full_contigs_gvn = 1;
         } else if (c == 'n'){
             nreads = atoi(optarg);
@@ -1035,22 +1035,22 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if (c == 0 && longindex == 9){  //seed
             opt.seed = atoi(optarg);
         } else if (c == 0 && longindex == 10){ //ideal-time
-            opt.flag |= SIGSIM_IDEAL_TIME;
+            opt.flag |= SQ_IDEAL_TIME;
         } else if (c == 0 && longindex == 11){ //ideal-amp
-            opt.flag |= SIGSIM_IDEAL_AMP;
+            opt.flag |= SQ_IDEAL_AMP;
         } else if (c == 0 && longindex == 12){ //dwell-mean
             p.dwell_mean = atof(optarg);
         } else if (c == 0 && longindex == 14) { //custom nucleotide model file
             opt.model_file = optarg;
         } else if (c == 0 && longindex == 15) { //prefix
-            yes_or_no(&opt, SIGSIM_PREFIX, longindex, optarg, 1);
+            yes_or_no(&opt, SQ_PREFIX, longindex, optarg, 1);
         } else if (c == 0 && longindex == 16) { //dwell-std
             p.dwell_std = atof(optarg);
         }
     }
 
     if (argc-optind<1 || output_file==NULL ||  fp_help == stdout) {
-        fprintf(fp_help,"Usage: sigsim [OPTIONS] ref.fa -o out_signal.blow5\n");
+        fprintf(fp_help,"Usage: squigulator [OPTIONS] ref.fa -o out_signal.blow5\n");
         fprintf(fp_help,"\nbasic options:\n");
         fprintf(fp_help,"   -o FILE                    SLOW5/BLOW5 file to write\n");
         fprintf(fp_help,"   -x STR                     parameter profile (always applied before other options) [dna-r9-prom]\n");
@@ -1081,7 +1081,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         exit(EXIT_FAILURE);
     }
 
-    int8_t rna = opt.flag & SIGSIM_RNA ? 1 : 0;
+    int8_t rna = opt.flag & SQ_RNA ? 1 : 0;
 
     //check args
     //-n incompatible with --full-contigs
@@ -1107,7 +1107,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
 
     core_t *core = init_core(opt, p, refname, output_file, fasta);
 
-    if(opt.flag & SIGSIM_FULL_CONTIG){
+    if(opt.flag & SQ_FULL_CONTIG){
         n = core->ref->num_ref;
     }
 

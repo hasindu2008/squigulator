@@ -9,7 +9,7 @@ ifeq ($(zstd),1)
 LDFLAGS		+= -lzstd
 endif
 
-BINARY = sigsim
+BINARY = squigulator
 OBJ = $(BUILD_DIR)/main.o \
       $(BUILD_DIR)/model.o \
 	  $(BUILD_DIR)/misc.o \
@@ -29,7 +29,7 @@ endif
 $(BINARY): $(OBJ) slow5lib/lib/libslow5.a
 	$(CC) $(CFLAGS) $(OBJ) slow5lib/lib/libslow5.a $(LDFLAGS) -o $@
 
-$(BUILD_DIR)/main.o: src/main.c src/misc.h src/error.h  src/sigsim.h
+$(BUILD_DIR)/main.o: src/main.c src/misc.h src/error.h  src/sq.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/model.o: src/model.c src/model.h  src/misc.h
@@ -60,4 +60,4 @@ test: $(BINARY)
 	scripts/test.sh
 
 valgrind: $(BINARY)
-	valgrind --leak-check=full ./sigsim test/nCoV-2019.reference.fasta -o a.blow5 -q a.fasta -n 10
+	valgrind --leak-check=full ./squigulator test/nCoV-2019.reference.fasta -o a.blow5 -q a.fasta -n 10

@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "sigsim.h"
+#include "sq.h"
 #include "model.h"
 #include "error.h"
 

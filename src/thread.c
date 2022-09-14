@@ -6,7 +6,7 @@
  */
 
 #include <pthread.h>
-#include "sigsim.h"
+#include "sq.h"
 #include "error.h"
 
 /**********************************

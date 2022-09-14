@@ -56,7 +56,7 @@ autom4te.cache
 
 #my
 /main
-/sigsim
+/squigulator
 /*.fast5
 *.fig
 /*.fa

@@ -66,6 +66,7 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
             strcmp(buffer, "kmer\tlevel_mean\tlevel_stdv\tsd_mean\tsd_stdv\tweight\n") ==0 ||
             strcmp(buffer, "kmer\tlevel_mean\tlevel_stdv\tsd_mean\tsd_stdv\n") ==0 ||
             strcmp(buffer,"kmer\tlevel_mean\tlevel_stdv\tsd_mean\tsd_stdv\tig_lambda\tweight\n") == 0 ||
+            strcmp(buffer,"kmer\tlevel_mean\tlevel_stdv\tsd_mean\tsd_stdv\tweight\tfstat\n") == 0 ||
             buffer[0] == '\n' || buffer[0] == '\r') { //comments and header
             //todo : (make generic)
             //fprintf(stderr, "%s\n", buffer);

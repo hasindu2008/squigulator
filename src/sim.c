@@ -393,7 +393,7 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
     core->opt = opt;
 
     core->profile = p;
-    core->model = (model_t*)malloc(sizeof(model_t) * MAX_NUM_KMER);
+    core->model = (model_t*)malloc(sizeof(model_t) * MAX_NUM_KMER); //todo not very memory efficient - do dynamically
     uint32_t k = 0;
     if (opt.model_file) {
         k=read_model(core->model, opt.model_file, MODEL_TYPE_NUCLEOTIDE);

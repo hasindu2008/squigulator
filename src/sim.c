@@ -62,6 +62,18 @@ profile_t prom_r9_rna_prof = {
     .dwell_mean=43.0,  //this must be sample_rate/bases_per_second for now
     .dwell_std=35.0
 };
+profile_t prom_r10_dna_prof = {
+    .digitisation = 2048,
+    .sample_rate = 4000,
+    //.bases_per_second = 450,
+    .range = 281.345551,
+    .offset_mean=-127.5655735,
+    .offset_std=19.377283387665,
+    .median_before_mean=189.87607393756,
+    .median_before_std=15.788097978713,
+    .dwell_mean=10.0, //this must be sample_rate/bases_per_second for now
+    .dwell_std=4.0
+};
 
 const char* polya = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 const char *adaptor_dna = "GGCGTCTGCTTGGGTGTTTAACCTTTTTTTTTTAATGTACTTCGTTCAGTTACGTATTGCT";
@@ -102,6 +114,9 @@ profile_t set_profile(char *prof_name, opt_t *opt){
     }else if(strcmp(prof_name, "rna-r9-prom") == 0){
         opt->flag |= SQ_RNA;
         return prom_r9_rna_prof;
+    }else if(strcmp(prof_name, "dna-r10-prom") == 0){
+        opt->flag |= SQ_R10;
+        return prom_r10_dna_prof;
     }else{
         ERROR("Unknown profile: %s\n", prof_name);
         exit(EXIT_FAILURE);
@@ -398,6 +413,10 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
     if (opt.model_file) {
         k=read_model(core->model, opt.model_file, MODEL_TYPE_NUCLEOTIDE);
     } else {
+        if(opt.flag & SQ_R10){
+            ERROR("%s","No built in R10 model yet. Provide custom model using --kmer-model option.");
+            exit(EXIT_FAILURE);
+        }
         if(opt.flag & SQ_RNA){
             INFO("%s","builtin RNA nucleotide model loaded");
             k=set_model(core->model, MODEL_ID_RNA_NUCLEOTIDE);
@@ -1054,7 +1073,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         fprintf(fp_help,"\nbasic options:\n");
         fprintf(fp_help,"   -o FILE                    SLOW5/BLOW5 file to write\n");
         fprintf(fp_help,"   -x STR                     parameter profile (always applied before other options) [dna-r9-prom]\n");
-        fprintf(fp_help,"                              e.g., dna-r9-min, dna-r9-prom, rna-r9-min, rna-r9-prom\n");
+        fprintf(fp_help,"                              e.g., dna-r9-min, dna-r9-prom, rna-r9-min, rna-r9-prom, dna-r10-prom\n");
         fprintf(fp_help,"   -n INT                     Number of reads to simulate [%ld]\n", nreads);
         fprintf(fp_help,"   -q FILE                    FASTA file to write simulated reads with no errors\n");
         fprintf(fp_help,"   -r INT                     Mean read length (estimate only, unused for direct RNA) [%d]\n",opt.rlen);

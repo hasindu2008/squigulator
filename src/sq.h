@@ -32,6 +32,7 @@
 #define SQ_IDEAL_TIME 0x008 //signal with no time domain noise
 #define SQ_IDEAL_AMP 0x010 //signal with no time amplitude domain noise
 #define SQ_PREFIX 0x020 //generate prefix or not
+#define SQ_R10 0x040 //R10 or R9
 
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold

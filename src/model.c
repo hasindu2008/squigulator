@@ -39,6 +39,7 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
 
     uint32_t kmer_size = MAX_KMER_SIZE;
     uint32_t num_kmer = eval_num_kmer(kmer_size,type);
+    int8_t valid_hdr = 0;
 
 
     WARNING("Reading the model from file %s. This is an experimental feature. Use with caution", file);
@@ -58,6 +59,7 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
 
     uint32_t num_k = 0;
     uint32_t line_no = 0;
+
 
 
     while ((readlinebytes = getline(&buffer, &bufferSize, fp)) != -1) {
@@ -86,10 +88,16 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
                     INFO("k-mer size in file %s is %d",file,val);
                     kmer_size=val;
                     num_kmer = eval_num_kmer(kmer_size,type);
+                    valid_hdr = 1;
                 }
             }
             continue;
         } else {
+
+            if(valid_hdr==0){
+                ERROR("Invalid model file %s. Header is missing. Does the format adhere to examples at test/r9-models?",file);
+                exit(EXIT_FAILURE);
+            }
             //as sd_mean and sd_stdv seems not to be used just read to the dummy weight
             #ifdef LOAD_SD_MEANSSTDV
                 int32_t ret =
@@ -108,6 +116,11 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
             num_k++;
             if (ret != 5) {
                 ERROR("File %s is corrupted at line %d. Does the format adhere to examples at test/r9-models?", file, line_no);
+                exit(EXIT_FAILURE);
+            }
+            if(strlen(kmer)!=kmer_size){
+                ERROR("File %s is corrupted at line %d. K-mer size %d is not consistent with that in header %d.", file, line_no, (int)strlen(kmer), (int)kmer_size);
+                exit(EXIT_FAILURE);
             }
             if (num_k > num_kmer) {
                 ERROR("File %s has too many entries. Expected %d kmers in the "

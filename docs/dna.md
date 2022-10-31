@@ -61,7 +61,7 @@ Then, variant calling was performed using Nanopolish and Clair3 and the ROC curv
 ## Different basecalling models
 
 
-All the above experiments were based on high accuracy basecalling. Given below is the comparison of results from variant calling when different basecalling models are used.
+All the above experiments were based on high accuracy basecalling. Given below is the comparison of results from variant calling when different basecalling models are used (Clair3 on left and Nanopolish on right). 
 
 <img src="img/model-var-clair3.png"  width=50% height=50%><img src="img/model-var-nanopolish.png"  width=50% height=50%>
 
@@ -72,7 +72,7 @@ Above experiments were with *squigulator* using default options for noise. *squi
 
 ![squigulator ideal options](img/ideal.svg)
 
-The effect of noise on variant calling is depicted in the figures below. High accuracy basecalling was used for all the cases here.
+The effect of noise on variant calling is depicted in the figures below (Clair3 on left and Nanopolish on right). High accuracy basecalling was used for all the cases here.
 
 <img src="img/ideal_clair.png"  width=50% height=50%><img src="img/ideal_nanopolish.png"  width=50% height=50%>
 
@@ -80,7 +80,7 @@ The effect of noise on variant calling is depicted in the figures below. High ac
 
 ![squigulator dwell options](img/dwell.svg)
 
-The effect of different amounts of noise in the time domain on variant calling is as below:
+The effect of different amounts of noise in the time domain on variant calling is as below (Clair3 on left and Nanopolish on right):
 
 <img src="img/dwell_clair.png"  width=50% height=50%><img src="img/dwell_nanopolish.png"  width=50% height=50%>
 

@@ -13,6 +13,7 @@
 #include "misc.h"
 #include "kseq.h"
 KSEQ_INIT(gzFile, gzread)
+#include "str.h"
 
 profile_t minion_r9_dna_prof = {
     .digitisation = 8192,
@@ -79,6 +80,69 @@ const char* polya = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 const char *adaptor_dna = "GGCGTCTGCTTGGGTGTTTAACCTTTTTTTTTTAATGTACTTCGTTCAGTTACGTATTGCT";
 const char *adaptor_rna = "TGATGATGAGGGATAGACGATGGTTGTTTCTGTTGGTGCTGATATTGCTTTTTTTTTTTTTATGATGCAAGATACGCAC";
 
+typedef struct {
+    char *read_id;
+    int64_t len_raw_signal;
+    int64_t sig_start;
+    int64_t sig_end;
+    char strand;
+    char *tid;
+    int64_t tlen;
+    int64_t t_st;
+    int64_t t_end;
+
+    int32_t *ss;
+    int64_t ss_n;
+    int64_t ss_c;
+
+    int64_t prefix_end;
+} paf_t;
+
+paf_t *init_paf() {
+    paf_t *paf = (paf_t*)malloc(sizeof(paf_t));
+    MALLOC_CHK(paf);
+    paf->ss_n = 0;
+    paf->ss_c = 1000; //todo can be the readlen
+    paf->ss = (int32_t*)malloc(paf->ss_c * sizeof(int32_t));
+    MALLOC_CHK(paf->ss);
+
+    paf->prefix_end = 0;
+    return paf;
+}
+
+void free_paf(paf_t *paf) {
+    free(paf->ss);
+    free(paf);
+}
+
+char *paf_str(paf_t *paf) {
+    kstring_t str;
+    kstring_t *sp = &str;
+    str_init(sp, paf->tlen*3+1000);
+
+    assert(paf->sig_end > paf->sig_start);
+    sprintf_append(sp, "%s\t%ld\t%ld\t%ld\t%c\t", paf->read_id, (long)paf->len_raw_signal,(long)paf->sig_start, (long)paf->sig_end, paf->strand);
+    //target: name, start, end
+    sprintf_append(sp, "%s\t%ld\t%ld\t%ld\t", paf->tid, paf->tlen, (long)paf->t_st, (long)paf->t_end);
+    //residue matches, block len, mapq
+    int64_t blocklen = paf->t_end - paf->t_st;
+    blocklen = blocklen > 0 ? blocklen : -blocklen;
+    sprintf_append(sp, "%ld\t%ld\t%d\t",blocklen,blocklen,255);
+    sprintf_append(sp, "sc:f:%f\t",1.0);
+    sprintf_append(sp, "sh:f:%f\t",0.0);
+    sprintf_append(sp, "ss:Z:",paf->ss);
+
+    int8_t rna = paf->t_st > paf->t_end ? 1 : 0;
+    for(int i=0; i<paf->ss_n; i++) {
+        int idx = rna ? paf->ss_n - i - 1 : i;
+        sprintf_append(sp, "%d,", paf->ss[idx]);
+    }
+
+    sprintf_append(sp, "\n");
+    str.s[str.l] = '\0';
+    return sp->s;
+}
+
 static struct option long_options[] = {
     {"verbose", required_argument, 0, 'v'},        //0 verbosity level [1]
     {"help", no_argument, 0, 'h'},                 //1
@@ -95,10 +159,11 @@ static struct option long_options[] = {
     {"dwell-mean", required_argument, 0, 0 },      //12 dwell mean
     {"profile", required_argument, 0, 'm' },       //13 parameter profile
     {"kmer-model", required_argument, 0, 0},       //14 custom nucleotide k-mer model file
-    {"prefix", required_argument, 0, 0},                 //15 prefix such as adaptor
+    {"prefix", required_argument, 0, 0},           //15 prefix such as adaptor
     {"dwell-std", required_argument, 0, 0 },       //16 dwell std
     {"threads", required_argument, 0, 't'},        //17 number of threads [8]
-    {"batchsize", required_argument, 0, 'K'},      //18 batchsize - number of reads loaded at once [1000]
+    {"batchsize", required_argument, 0, 'K'},      //18 batchsize - number of reads processed at once [1000]
+    {"paf", required_argument, 0, 'c'},      //18 batchsize - number of reads processed at once [1000]
     {0, 0, 0, 0}};
 
 
@@ -403,7 +468,7 @@ static void init_rand(core_t *core){
     }
 }
 
-static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_file, char *fasta){
+static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_file, char *fasta, char *paf){
     core_t *core = (core_t *)malloc(sizeof(core_t));
     core->opt = opt;
 
@@ -455,6 +520,14 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
             exit(EXIT_FAILURE);
         }
     }
+    core->fp_paf = NULL;
+    if(paf){
+        core->fp_paf = fopen(paf,"w");
+        if(core->fp_paf==NULL){
+            fprintf(stderr, "Error opening file %s\n",paf);
+            exit(EXIT_FAILURE);
+        }
+    }
 
     core->n_samples = 0;
 
@@ -489,6 +562,9 @@ void free_core(core_t *core){
     if(core->fp_fasta){
         fclose(core->fp_fasta);
     }
+    if(core->fp_paf){
+        fclose(core->fp_paf);
+    }
     slow5_close(core->sp);
     free_ref_sim(core->ref);
 
@@ -515,6 +591,13 @@ db_t* init_db(core_t* core, int32_t n_rec) {
         db->fasta = NULL;
     }
 
+    if(core->fp_paf){
+        db->paf = (char**)(calloc(db->capacity_rec,sizeof(char*)));
+        MALLOC_CHK(db->paf);
+    } else {
+        db->paf = NULL;
+    }
+
     return db;
 }
 
@@ -527,6 +610,9 @@ void free_db(db_t* db) {
         if(db->fasta){
             free(db->fasta[i]);
         }
+        if(db->paf){
+            free(db->paf[i]);
+        }
     }
 
     free(db->mem_records);
@@ -534,6 +620,10 @@ void free_db(db_t* db) {
     if(db->fasta){
         free(db->fasta);
     }
+    if(db->paf){
+        free(db->paf);
+    }
+
 
     free(db);
 }
@@ -612,7 +702,7 @@ void gen_prefix_dna(int16_t *raw_signal, int64_t* n, int64_t *c, profile_t *prof
 }
 
 
-int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset, const char *read, int32_t len, int tid){
+int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset, const char *read, int32_t len, int tid, paf_t *paf){
 
     profile_t *profile = &core->profile;
     uint32_t kmer_size = core->kmer_size;
@@ -629,6 +719,8 @@ int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_
         n_kmers=5;
         read="ACGTACGTACGT";
     }
+
+    if(paf) paf->sig_start = 0;
 
     for (int i=0; i< n_kmers; i++){
         uint32_t kmer_rank = get_kmer_rank(read+i, kmer_size);
@@ -650,12 +742,24 @@ int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_
             raw_signal[*n] = s*(profile->digitisation)/(profile->range)-(offset);
             *n = *n+1;
         }
+        if(paf) {
+            if(paf->ss_n==paf->ss_c){
+                paf->ss_c *= 2;
+                paf->ss = (int32_t *)realloc(paf->ss, paf->ss_c*sizeof(int32_t));
+                MALLOC_CHK(paf->ss);
+            }
+            paf->ss[paf->ss_n] = sps >=0 ? sps : 0;
+            paf->ss_n++;
+        }
     }
+
+    if(paf) paf->sig_end = *n;
+
     return raw_signal;
 
 }
 
-int16_t *gen_prefix_rna(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset, int tid){
+int16_t *gen_prefix_rna(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset, int tid, paf_t *paf){
 
     profile_t *profile = &core->profile;
     //float s;
@@ -673,13 +777,13 @@ int16_t *gen_prefix_rna(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *
     }
 
     const char *stall = "AAAAAGAAAAAACCCCCCCCCCCCCCCCCC";
-    raw_signal=gen_sig_core_seq(core, raw_signal, n, c, offset, stall, strlen(stall), tid);
+    raw_signal=gen_sig_core_seq(core, raw_signal, n, c, offset, stall, strlen(stall), tid, paf);
 
 
     return raw_signal;
 }
 
-char *attach_prefix(core_t *core, const char *read, int32_t *len){
+char *attach_prefix(core_t *core, const char *read, int32_t *len, paf_t *paf){
 
     char *s = (char *)read;
     if(core->opt.flag & SQ_RNA){
@@ -707,7 +811,7 @@ char *attach_prefix(core_t *core, const char *read, int32_t *len){
     return s;
 }
 
-int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int tid){
+int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int tid, paf_t *paf){
 
     profile_t *profile = &core->profile;
     uint32_t kmer_size = core->kmer_size;
@@ -740,14 +844,14 @@ int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offse
 
     char *tmpread = NULL;
     if(core->opt.flag & SQ_PREFIX){
-        read = tmpread = attach_prefix(core, read, &len);
+        read = tmpread = attach_prefix(core, read, &len, paf);
     }
     //fprintf(stderr, "read: %s\n", read);
 
-    raw_signal = gen_sig_core_seq(core, raw_signal, &n, &c, *offset, read, len, tid);
+    raw_signal = gen_sig_core_seq(core, raw_signal, &n, &c, *offset, read, len, tid, paf);
 
     if(core->opt.flag & SQ_PREFIX && core->opt.flag & SQ_RNA){
-        raw_signal=gen_prefix_rna(core, raw_signal,&n,&c, *offset, tid);
+        raw_signal=gen_prefix_rna(core, raw_signal,&n,&c, *offset, tid, paf);
     }
     if(tmpread){
         free(tmpread);
@@ -759,8 +863,8 @@ int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offse
 }
 
 
-static inline int16_t *gen_sig(core_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int8_t rna, int tid){
-    int16_t *sig = gen_sig_core(core, read, len, offset, median_before, len_raw_signal, tid);
+static inline int16_t *gen_sig(core_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int8_t rna, int tid, paf_t *paf){
+    int16_t *sig = gen_sig_core(core, read, len, offset, median_before, len_raw_signal, tid, paf);
     if(rna){
         for(int i=0; i<*len_raw_signal/2; i++){
             int16_t tmp = sig[i];
@@ -913,6 +1017,9 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         exit(EXIT_FAILURE);
     }
 
+    paf_t *paf = NULL;
+    if(core->fp_paf) paf = init_paf();
+
     if(opt.flag & SQ_FULL_CONTIG){
         rid = ref->ref_names[i];
         rlen = ref->ref_lengths[i];
@@ -924,7 +1031,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         seq=gen_read(core, ref, &rid, &ref_pos_st, &rlen, &strand, rna, tid);
         ref_pos_end = ref_pos_st+rlen;
     }
-    int16_t *raw_signal=gen_sig(core, seq, rlen, &offset, &median_before, &len_raw_signal, rna, tid);
+    int16_t *raw_signal=gen_sig(core, seq, rlen, &offset, &median_before, &len_raw_signal, rna, tid, paf);
     assert(raw_signal != NULL && len_raw_signal > 0);
 
     char *read_id= (char *)malloc(sizeof(char)*(10000));
@@ -932,6 +1039,28 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
     if(core->fp_fasta){
         db->fasta[i] = (char *)malloc(sizeof(char)*(strlen(read_id)+strlen(seq)+10)); //+10 bit inefficent - for now
         sprintf(db->fasta[i],">%s\n%s\n",read_id,seq);
+    }
+    if(core->fp_paf){
+        int64_t n_kmer = rlen - core->kmer_size+1;
+        assert(n_kmer > 0);
+        paf->read_id = read_id;
+        paf->len_raw_signal = len_raw_signal;
+
+        paf->strand = strand;
+        if(0){ //later expose as options
+            paf->tid = rid;
+            paf->tlen = n_kmer;
+            paf->t_st = rna ? ref_pos_end - core->kmer_size+1 : ref_pos_st;
+            paf->t_end = rna ? ref_pos_st : ref_pos_end;
+        } else {
+            paf->tid = read_id;
+            paf->tlen = rlen;
+            paf->t_st = 0;
+            paf->t_end = rlen;
+        }
+        db->paf[i] = paf_str(paf);
+
+        free_paf(paf);
     }
 
     int64_t n_samples = __sync_fetch_and_add(&core->n_samples, len_raw_signal);
@@ -978,6 +1107,9 @@ void output_db(core_t* core, db_t* db) {
         if(core->fp_fasta){
             fprintf(core->fp_fasta,"%s",db->fasta[i]);
         }
+        if(core->fp_paf){
+            fprintf(core->fp_paf,"%s",db->paf[i]);
+        }
     }
 
     core->total_reads += db->n_rec;
@@ -991,7 +1123,7 @@ void output_db(core_t* core, db_t* db) {
 
 int sim_main(int argc, char* argv[], double realtime0) {
 
-    const char* optstring = "o:hVn:q:r:x:v:K:t:";
+    const char* optstring = "o:hVn:q:r:x:v:K:t:c:";
 
     int longindex = 0;
     int32_t c = -1;
@@ -999,6 +1131,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
     FILE *fp_help = stderr;
     char *output_file = NULL;
     char *fasta = NULL;
+    char *paf = NULL;
 
     opt_t opt;
     init_opt(&opt);
@@ -1051,6 +1184,8 @@ int sim_main(int argc, char* argv[], double realtime0) {
                 ERROR("Number of threads should larger than 0. You entered %d", opt.num_thread);
                 exit(EXIT_FAILURE);
             }
+        } else if (c == 'c'){
+            paf = optarg;
         } else if (c == 0 && longindex == 9){  //seed
             opt.seed = atoi(optarg);
         } else if (c == 0 && longindex == 10){ //ideal-time
@@ -1076,6 +1211,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         fprintf(fp_help,"                              e.g., dna-r9-min, dna-r9-prom, rna-r9-min, rna-r9-prom, dna-r10-prom\n");
         fprintf(fp_help,"   -n INT                     Number of reads to simulate [%ld]\n", nreads);
         fprintf(fp_help,"   -q FILE                    FASTA file to write simulated reads with no errors\n");
+        fprintf(fp_help,"   -c FILE                    PAF file to write the alignment of simulated reads\n");
         fprintf(fp_help,"   -r INT                     Mean read length (estimate only, unused for direct RNA) [%d]\n",opt.rlen);
         fprintf(fp_help,"   -t INT                     number of threads [%d]\n",opt.num_thread);
         fprintf(fp_help,"   -K INT                     batch size (max number of reads created at once) [%d]\n",opt.batch_size);
@@ -1124,7 +1260,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
 
     int64_t n = nreads;
 
-    core_t *core = init_core(opt, p, refname, output_file, fasta);
+    core_t *core = init_core(opt, p, refname, output_file, fasta, paf);
 
     if(opt.flag & SQ_FULL_CONTIG){
         n = core->ref->num_ref;

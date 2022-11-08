@@ -41,7 +41,7 @@ $(BUILD_DIR)/thread.o: src/thread.c
 $(BUILD_DIR)/misc.o: src/misc.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
-$(BUILD_DIR)/sim.o: src/sim.c src/ref.h src/misc.h
+$(BUILD_DIR)/sim.o: src/sim.c src/ref.h src/misc.h src/str.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 slow5lib/lib/libslow5.a:

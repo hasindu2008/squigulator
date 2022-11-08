@@ -137,6 +137,7 @@ typedef struct {
 
     //files
     FILE *fp_fasta;
+    FILE *fp_paf;
     slow5_file_t *sp;
 
     //reference
@@ -162,6 +163,7 @@ typedef struct {
     size_t *mem_bytes;
 
     char **fasta;
+    char **paf;
 
     int64_t n_samples;
 

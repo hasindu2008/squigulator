@@ -1054,9 +1054,9 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
             paf->t_end = rna ? ref_pos_st : ref_pos_end;
         } else {
             paf->tid = read_id;
-            paf->tlen = rlen;
+            paf->tlen = n_kmer;
             paf->t_st = 0;
-            paf->t_end = rlen;
+            paf->t_end = n_kmer;
         }
         db->paf[i] = paf_str(paf);
 

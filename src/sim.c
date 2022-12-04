@@ -530,6 +530,7 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
     }
 
     core->n_samples = 0;
+    core->total_reads = 0;
 
     return core;
 }
@@ -1021,9 +1022,9 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
     if(core->fp_paf) paf = init_paf();
 
     if(opt.flag & SQ_FULL_CONTIG){
-        rid = ref->ref_names[i];
-        rlen = ref->ref_lengths[i];
-        seq = ref->ref_seq[i];
+        rid = ref->ref_names[core->total_reads+i];
+        rlen = ref->ref_lengths[core->total_reads+i];
+        seq = ref->ref_seq[core->total_reads+i];
         strand = '+';
         ref_pos_st = 0;
         ref_pos_end = rlen;

@@ -2,9 +2,9 @@
 
 **This document is not yet complete. The experiments were conducted using commit [2b9f3e886eea16](https://github.com/hasindu2008/squigulator/commit/2b9f3e886eea1601d9f0b2021bcd303ad48005a8). As this tool is under activate development, the results may change in future versions.**
 
-For comparing *squigulator* against real data, reads mapping to the chr22 from a NA12878 dataset sequenced on a PromethION sequencer was used. The extracted dataset had ~135,000 reads whose mean read length was ~10,800 bases (will be referred to as *real*). To simulate reads using *squigulator*, first, a heterozygous NA12878 heterozygous chr22 reference was created by applying NA12878 GIAB variants to chr22 in hg38 reference genome. Then, *squigulator* was executed to generate 135,000 reads at mean read length of 10,800 (will be referred to as *sim*).  See [Methods](#Methods) for more information.
+For comparing *squigulator* against real data, reads mapping to the chr22 from a NA12878 dataset sequenced on a PromethION sequencer was used. The extracted dataset had ~135,000 reads whose mean read length was ~10,800 bases (will be referred to as *real*). To simulate reads using *squigulator*, first, a heterozygous NA12878 heterozygous chr22 reference was created by applying NA12878 GIAB variants to chr22 in hg38 reference genome. Then, *squigulator* was executed to generate 135,000 reads at mean read length of 10,800 (will be referred to as *simulated*).  See [Methods](#Methods) for more information.
 
-Both *real* and *sim* above were basecalled using the high accuracy model. The read length histogram for the basecalled data is given below. Two distributions are not identical, but close enough.
+Both *real* and *simulated* above were basecalled using the high accuracy model. The read length histogram for the basecalled data is given below. Two distributions are not identical, but close enough.
 
 ![squigulator read length histogram](img/read_len_hist.svg)
 
@@ -61,7 +61,7 @@ Then, variant calling was performed using Nanopolish and Clair3 and the ROC curv
 ## Different basecalling models
 
 
-All the above experiments were based on high accuracy basecalling. Given below is the comparison of results from variant calling when different basecalling models are used.
+All the above experiments were based on high accuracy basecalling. Given below is the comparison of results from variant calling when different basecalling models are used (Clair3 on left and Nanopolish on right). 
 
 <img src="img/model-var-clair3.png"  width=50% height=50%><img src="img/model-var-nanopolish.png"  width=50% height=50%>
 
@@ -72,7 +72,7 @@ Above experiments were with *squigulator* using default options for noise. *squi
 
 ![squigulator ideal options](img/ideal.svg)
 
-The effect of noise on variant calling is depicted in the figures below. High accuracy basecalling was used for all the cases here.
+The effect of noise on variant calling is depicted in the figures below (Clair3 on left and Nanopolish on right). High accuracy basecalling was used for all the cases here.
 
 <img src="img/ideal_clair.png"  width=50% height=50%><img src="img/ideal_nanopolish.png"  width=50% height=50%>
 
@@ -80,7 +80,7 @@ The effect of noise on variant calling is depicted in the figures below. High ac
 
 ![squigulator dwell options](img/dwell.svg)
 
-The effect of different amounts of noise in the time domain on variant calling is as below:
+The effect of different amounts of noise in the time domain on variant calling is as below (Clair3 on left and Nanopolish on right):
 
 <img src="img/dwell_clair.png"  width=50% height=50%><img src="img/dwell_nanopolish.png"  width=50% height=50%>
 

@@ -66,6 +66,7 @@ Advanced options are as below:
 -  `--ideal-amp `: Generate signals with no noise in the amplitude domain. All samples for a given k-mer/base will have same signal values. See example [here](docs/img/ideal.svg).
 -  `--dwell-mean FLOAT`: Mean of number of signal samples per k-mer/base. This is usually the sampling rate (4000Hz for DNA and 3000Hz for RNA) divided by translocation speed in bases per second (450 for R9.4.1 pore for DNA and 70 for RNA).
 -  `--dwell-std FLOAT`: Standard deviation of number of signal samples per k-mer/base. Increasing this will increase time-domain noise. Setting this to 0 is same as `--ideal-time`. See example [here](docs/img/dwell.svg).
+-  `--amp-noise FLOAT`: The amplitude noise factor. This factor is multiplied with level standard deviation values in the pore-model. Setting this to 0.0 is same as `--ideal-amp`..
 
 ## Examples
 
@@ -81,7 +82,7 @@ squigulator hg38noAlt.fa -x dna-r9-min -o reads.blow5 -n 30000 -r 50000
 # generate 1000 PromethION DNA reads with perfect signals with no noise
 squigulator hg38noAlt.fa -x dna-r9-prom -o reads.blow5 -n 1000 --ideal
 
-# simulate signals for basecalled reads (each complete read will be simulated)
+# simulate signals for basecalled reads (each complete read will be simulated; not memory optimised yet, will load the while basecalled.fq to memory first)
 squigulator basecalled.fq -x dna-r9-prom -o reads.blow5 --full-contigs
 
 ```
@@ -91,7 +92,7 @@ RNA examples:
 # generate 4000 PromethION direct RNA reads from a transcriptome while including the adaptor and polyA tail
 squigulator gencode.v40.transcripts.fa -x rna-r9-prom -o reads.blow5 -n 4000 --prefix
 
-# simulate signals for basecalled reads (each complete read will be simulated)
+# simulate signals for basecalled reads (each complete read will be simulated; not memory optimised yet, will load the while basecalled.fq to memory first)
 squigulator basecalled.fq -x dna-r9-prom -o reads.blow5 --full-contigs
 ```
 

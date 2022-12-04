@@ -115,6 +115,8 @@ typedef struct{
     int32_t num_thread; //t
     int32_t batch_size; //K
 
+    float amp_noise;
+
 } opt_t;
 
 typedef struct {

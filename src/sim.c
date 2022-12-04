@@ -163,7 +163,8 @@ static struct option long_options[] = {
     {"dwell-std", required_argument, 0, 0 },       //16 dwell std
     {"threads", required_argument, 0, 't'},        //17 number of threads [8]
     {"batchsize", required_argument, 0, 'K'},      //18 batchsize - number of reads processed at once [1000]
-    {"paf", required_argument, 0, 'c'},      //18 batchsize - number of reads processed at once [1000]
+    {"paf", required_argument, 0, 'c'},            //19 output paf file with alognments
+    {"amp-noise", required_argument, 0, 0 },       //20 amplitude noise factor
     {0, 0, 0, 0}};
 
 
@@ -275,6 +276,7 @@ static void init_opt(opt_t *opt){
     opt->flag = 0;
     opt->num_thread = 8;
     opt->batch_size = 1000;
+    opt->amp_noise = 1;
 }
 
 //todo can be optimised for memory by better encoding if necessary
@@ -461,7 +463,7 @@ static void init_rand(core_t *core){
 
         core->kmer_gen[i] = (nrng_t **)malloc(sizeof(nrng_t *) * n);
         for (uint32_t j = 0; j < n; j++){
-            core->kmer_gen[i][j] = init_nrng(seed+j, m[j].level_mean, m[j].level_stdv);
+            core->kmer_gen[i][j] = init_nrng(seed+j, m[j].level_mean, m[j].level_stdv*opt.amp_noise);
         }
 
         seed += (n+10);
@@ -1201,6 +1203,8 @@ int sim_main(int argc, char* argv[], double realtime0) {
             yes_or_no(&opt, SQ_PREFIX, longindex, optarg, 1);
         } else if (c == 0 && longindex == 16) { //dwell-std
             p.dwell_std = atof(optarg);
+        } else if (c == 0 && longindex == 20) { //amp-noise
+            opt.amp_noise = atof(optarg);
         }
     }
 
@@ -1231,6 +1235,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         fprintf(fp_help,"   --ideal-amp                Generate signals with no amplitiude domain noise\n");
         fprintf(fp_help,"   --dwell-mean FLOAT         Mean of number of signal samples per base [%f]\n",p.dwell_mean);
         fprintf(fp_help,"   --dwell-std FLOAT          standard deveation of number of signal samples per base [%f]\n",p.dwell_std);
+        fprintf(fp_help,"   --amp-noise FLOAT          amplitude domain noise factor [%f]\n",opt.amp_noise);
         if(fp_help == stdout){
             exit(EXIT_SUCCESS);
         }

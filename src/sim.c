@@ -910,7 +910,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
     assert(raw_signal != NULL && len_raw_signal > 0);
 
     char *read_id= (char *)malloc(sizeof(char)*(10000));
-    sprintf(read_id,"S1_%d!%s!%d!%d!%c",i+1, rid, ref_pos_st, ref_pos_end, strand);
+    sprintf(read_id,"S1_%ld!%s!%d!%d!%c",core->total_reads+i+1, rid, ref_pos_st, ref_pos_end, strand);
     if(core->fp_fasta){
         db->fasta[i] = (char *)malloc(sizeof(char)*(strlen(read_id)+strlen(seq)+10)); //+10 bit inefficent - for now
         sprintf(db->fasta[i],">%s\n%s\n",read_id,seq);
@@ -918,7 +918,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
 
     int64_t n_samples = __sync_fetch_and_add(&core->n_samples, len_raw_signal);
     set_record_primary_fields(&core->profile, slow5_record, read_id, offset, len_raw_signal, raw_signal);
-    set_record_aux_fields(slow5_record, sp, median_before, i, n_samples);
+    set_record_aux_fields(slow5_record, sp, median_before, core->total_reads+i, n_samples);
 
     //encode to a buffer
     if (slow5_encode(&db->mem_records[i], &db->mem_bytes[i], slow5_record, sp) < 0){

@@ -14,8 +14,8 @@
 #define MODEL_TYPE_NUCLEOTIDE 1
 #define MODEL_TYPE_METH 2
 
-#define MAX_KMER_SIZE 9 //maximum k-mer size
-#define MAX_NUM_KMER 262144   //maximum number of k-mers in nucleotide model
+#define MAX_KMER_SIZE 10 //maximum k-mer size
+#define MAX_NUM_KMER 1048576   //maximum number of k-mers in nucleotide model
 #define MAX_NUM_KMER_METH 15625 //maximum number of k-mers in methylated model
 
 //default model IDs

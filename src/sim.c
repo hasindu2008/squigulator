@@ -280,6 +280,7 @@ static void init_opt(opt_t *opt){
     opt->num_thread = 8;
     opt->batch_size = 1000;
     opt->amp_noise = 1;
+    opt->dwell_noise = 1;
 }
 
 //todo can be optimised for memory by better encoding if necessary
@@ -454,6 +455,7 @@ static void init_rand(core_t *core){
     core->rand_offset = (nrng_t **) malloc(t*sizeof(nrng_t *));
     core->rand_median_before = (nrng_t **) malloc(t*sizeof(nrng_t *));
     core->kmer_gen = (nrng_t ***) malloc(t*sizeof(nrng_t **));
+    core->kmer_gen2 = (grng_t ***) malloc(t*sizeof(grng_t **));
 
     int64_t seed = opt.seed;
     for(int i=0; i<t; i++){
@@ -465,8 +467,10 @@ static void init_rand(core_t *core){
         core->rand_median_before[i] = init_nrng(seed+5, p.median_before_mean, p.median_before_std);
 
         core->kmer_gen[i] = (nrng_t **)malloc(sizeof(nrng_t *) * n);
+        core->kmer_gen2[i] = (grng_t **)malloc(sizeof(grng_t *) * n);
         for (uint32_t j = 0; j < n; j++){
             core->kmer_gen[i][j] = init_nrng(seed+j, m[j].level_mean, m[j].level_stdv*opt.amp_noise);
+            core->kmer_gen2[i][j] = init_grng(seed+j, ALPHA(m[j].dwell_mean, m[j].dwell_stdv*opt.dwell_noise), BETA(m[j].dwell_mean, m[j].dwell_stdv*opt.dwell_noise));
         }
 
         seed += (n+10);
@@ -549,8 +553,10 @@ void free_core(core_t *core){
         free_nrng(core->rand_median_before[i]);
         for (uint32_t j = 0; j < core->num_kmer; j++){
             free_nrng(core->kmer_gen[i][j]);
+            free_grng(core->kmer_gen2[i][j]);
         }
         free(core->kmer_gen[i]);
+        free(core->kmer_gen2[i]);
     }
 
 
@@ -731,8 +737,10 @@ int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_
     for (int i=0; i< n_kmers; i++){
         uint32_t kmer_rank = get_kmer_rank(read+i, kmer_size);
         if(!(ideal || ideal_time)){
-            sps = round(grng(core->rand_time[tid]));
+            sps = round(grng(core->kmer_gen2[tid][kmer_rank]));
             //fprintf(stderr,"%d %d %d %d\n",*n,n_kmers,*c,sps);
+        } else{
+            sps = pore_model[kmer_rank].dwell_mean;
         }
         for(int j=0; j<sps; j++){
             if(*n==*c){

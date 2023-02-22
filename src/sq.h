@@ -90,11 +90,10 @@ typedef struct {
     float level_log_stdv;     //pre-calculated for efficiency
 #endif
 
-#ifdef LOAD_SD_MEANSSTDV
-    //float sd_mean;
-    //float sd_stdv;
+    float dwell_mean;
+    float dwell_stdv;
     //float weight;
-#endif
+
 } model_t;
 
 typedef struct{
@@ -116,6 +115,7 @@ typedef struct{
     int32_t batch_size; //K
 
     float amp_noise;
+    float dwell_noise;
 
 } opt_t;
 
@@ -131,6 +131,7 @@ typedef struct {
     profile_t profile;
     model_t *model;
     nrng_t ***kmer_gen;
+    grng_t ***kmer_gen2;
     uint32_t kmer_size;
     uint32_t num_kmer;
 

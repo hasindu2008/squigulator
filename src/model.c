@@ -65,10 +65,10 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
     while ((readlinebytes = getline(&buffer, &bufferSize, fp)) != -1) {
         line_no++;
         if (buffer[0] == '#' ||
-            strcmp(buffer, "kmer\tlevel_mean\tlevel_stdv\tsd_mean\tsd_stdv\tweight\n") ==0 ||
-            strcmp(buffer, "kmer\tlevel_mean\tlevel_stdv\tsd_mean\tsd_stdv\n") ==0 ||
-            strcmp(buffer,"kmer\tlevel_mean\tlevel_stdv\tsd_mean\tsd_stdv\tig_lambda\tweight\n") == 0 ||
-            strcmp(buffer,"kmer\tlevel_mean\tlevel_stdv\tsd_mean\tsd_stdv\tweight\tfstat\n") == 0 ||
+            strcmp(buffer, "kmer\tlevel_mean\tlevel_stdv\tdwell_mean\tdwell_stdv\tweight\n") ==0 ||
+            strcmp(buffer, "kmer\tlevel_mean\tlevel_stdv\tdwell_mean\tdwell_stdv\n") ==0 ||
+            strcmp(buffer,"kmer\tlevel_mean\tlevel_stdv\tdwell_mean\tdwell_stdv\tig_lambda\tweight\n") == 0 ||
+            strcmp(buffer,"kmer\tlevel_mean\tlevel_stdv\tdwell_mean\tdwell_stdv\tweight\tfstat\n") == 0 ||
             buffer[0] == '\n' || buffer[0] == '\r') { //comments and header
             //todo : (make generic)
             //fprintf(stderr, "%s\n", buffer);
@@ -98,12 +98,12 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
                 ERROR("Invalid model file %s. Header is missing. Does the format adhere to examples at test/r9-models?",file);
                 exit(EXIT_FAILURE);
             }
-            //as sd_mean and sd_stdv seems not to be used just read to the dummy weight
+            //as dwell_mean and dwell_stdv seems not to be used just read to the dummy weight
             #ifdef LOAD_SD_MEANSSTDV
                 int32_t ret =
                     sscanf(buffer, "%s\t%f\t%f\t%f\t%f\t%f", kmer,
                         &model[num_k].level_mean, &model[num_k].level_stdv,
-                        &model[num_k].sd_mean, &model[num_k].sd_stdv, &weight);
+                        &model[num_k].dwell_mean, &model[num_k].dwell_stdv, &weight);
             #else
                 int32_t ret =
                     sscanf(buffer, "%s\t%f\t%f\t%f\t%f", kmer,
@@ -141,10 +141,10 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
 
 #ifdef DEBUG_MODEL_PRINT
     uint32_t i = 0;
-    fprintf(stderr, "level_mean\tlevel_stdv\tsd_mean\tsd_stdv\n");
+    fprintf(stderr, "level_mean\tlevel_stdv\tdwell_mean\tdwell_stdv\n");
     for (i = 0; i < num_kmer; i++) {
         fprintf(stderr, "%f\t%f\t%f\t%f\n", model[i].level_mean,
-                model[i].level_stdv, 0.0,0.0);
+                model[i].level_stdv, model[i].dwell_mean, model[i].dwell_stdv);
     }
 #endif
 
@@ -187,10 +187,8 @@ uint32_t set_model(model_t* model, uint32_t model_id) {
     for (i = 0; i < num_kmer; i++) {
         model[i].level_mean = inbuilt_model[i * 4 + 0];
         model[i].level_stdv = inbuilt_model[i * 4 + 1];
-    #ifdef LOAD_SD_MEANSSTDV
-        model[i].sd_mean = inbuilt_model[i * 4 + 2];
-        model[i].sd_stdv = inbuilt_model[i * 4 + 3];
-    #endif
+        model[i].dwell_mean = inbuilt_model[i * 4 + 2];
+        model[i].dwell_stdv = inbuilt_model[i * 4 + 3];
     #ifdef CACHED_LOG
         model[i].level_log_stdv=log(model[i].level_stdv);
     #endif
@@ -198,7 +196,7 @@ uint32_t set_model(model_t* model, uint32_t model_id) {
 
 #ifdef DEBUG_MODEL_PRINT
     i = 0;
-    fprintf(stderr, "level_mean\tlevel_stdv\tsd_mean\tsd_stdv\n");
+    fprintf(stderr, "level_mean\tlevel_stdv\tdwell_mean\tdwell_stdv\n");
     for (i = 0; i < num_kmer; i++) {
         fprintf(stderr, "%f\t%f\t%f\t%f\n", model[i].level_mean,
                 model[i].level_stdv, 0.0, 0.0);

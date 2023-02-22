@@ -123,7 +123,7 @@ typedef struct {
 
     int64_t *ref_pos;
     int64_t *rand_strand;
-    nrng_t **rand_time;
+    grng_t **rand_time;
     grng_t **rand_rlen;
     nrng_t **rand_offset;
     nrng_t **rand_median_before;

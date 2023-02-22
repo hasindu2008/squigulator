@@ -15,6 +15,9 @@
 KSEQ_INIT(gzFile, gzread)
 #include "str.h"
 
+#define ALPHA(MEAN,STD) (((MEAN)*(MEAN))/((STD)*(STD)))
+#define BETA(MEAN,STD) (((STD)*(STD))/(MEAN))
+
 profile_t minion_r9_dna_prof = {
     .digitisation = 8192,
     .sample_rate = 4000,
@@ -24,8 +27,8 @@ profile_t minion_r9_dna_prof = {
     .offset_std=10.25279688,
     .median_before_mean=200.815801,
     .median_before_std=20.48933762,
-    .dwell_mean=9.0, //this must be sample_rate/bases_per_second for now
-    .dwell_std=4.0
+    .dwell_mean=10.0, //this must be sample_rate/bases_per_second for now
+    .dwell_std=6.0
 };
 profile_t prom_r9_dna_prof = {
     .digitisation = 2048,
@@ -36,8 +39,8 @@ profile_t prom_r9_dna_prof = {
     .offset_std=14.1575,
     .median_before_mean=214.2890337,
     .median_before_std=18.0127916,
-    .dwell_mean=9.0, //this must be sample_rate/bases_per_second for now
-    .dwell_std=4.0
+    .dwell_mean=10.0, //this must be sample_rate/bases_per_second for now
+    .dwell_std=6.0
 };
 profile_t minion_r9_rna_prof = {
     .digitisation = 8192,
@@ -446,7 +449,7 @@ static void init_rand(core_t *core){
 
     core->ref_pos  = (int64_t *) malloc(t*sizeof(int64_t));
     core->rand_strand = (int64_t *) malloc(t*sizeof(int64_t));
-    core->rand_time = (nrng_t **) malloc(t*sizeof(nrng_t *));
+    core->rand_time = (grng_t **) malloc(t*sizeof(grng_t *));
     core->rand_rlen = (grng_t **) malloc(t*sizeof(grng_t *));
     core->rand_offset = (nrng_t **) malloc(t*sizeof(nrng_t *));
     core->rand_median_before = (nrng_t **) malloc(t*sizeof(nrng_t *));
@@ -456,7 +459,7 @@ static void init_rand(core_t *core){
     for(int i=0; i<t; i++){
         core->ref_pos[i] = seed;
         core->rand_strand[i] = seed+1;
-        core->rand_time[i] = init_nrng(seed+2, p.dwell_mean, p.dwell_std);
+        core->rand_time[i] = init_grng(seed+2, ALPHA(p.dwell_mean,p.dwell_std), BETA(p.dwell_mean,p.dwell_std));
         core->rand_rlen[i] = init_grng(seed+3, 2.0, opt.rlen/2);
         core->rand_offset[i] = init_nrng(seed+4, p.offset_mean, p.offset_std);
         core->rand_median_before[i] = init_nrng(seed+5, p.median_before_mean, p.median_before_std);
@@ -540,7 +543,7 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
 void free_core(core_t *core){
 
     for(int i=0; i<core->opt.num_thread; i++){
-        free_nrng(core->rand_time[i]);
+        free_grng(core->rand_time[i]);
         free_grng(core->rand_rlen[i]);
         free_nrng(core->rand_offset[i]);
         free_nrng(core->rand_median_before[i]);
@@ -728,7 +731,7 @@ int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_
     for (int i=0; i< n_kmers; i++){
         uint32_t kmer_rank = get_kmer_rank(read+i, kmer_size);
         if(!(ideal || ideal_time)){
-            sps = round(nrng(core->rand_time[tid]));
+            sps = round(grng(core->rand_time[tid]));
             //fprintf(stderr,"%d %d %d %d\n",*n,n_kmers,*c,sps);
         }
         for(int j=0; j<sps; j++){

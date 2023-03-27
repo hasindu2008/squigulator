@@ -104,7 +104,8 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
                 model[num_k].level_log_stdv=log(model[num_k].level_stdv);
             #endif
             num_k++;
-            if (ret != 5) {
+            if (ret != 3) {
+                ERROR("File %s is corrupted at line %d. K-mer size %d is not consistent with that in header %d.", file, line_no, (int)strlen(kmer), (int)kmer_size);
                 exit(EXIT_FAILURE);
             }
             if(strlen(kmer)!=kmer_size){
@@ -112,9 +113,7 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
                 exit(EXIT_FAILURE);
             }
             if (num_k > num_kmer) {
-                ERROR("File %s has too many entries. Expected %d kmers in the "
-                      "model, but file had more than that",
-                      file, num_kmer);
+                ERROR("File %s has too many entries. Expected %d kmers in the model, but file had more than that", file, num_kmer);
                 exit(EXIT_FAILURE);
             }
         }
@@ -122,9 +121,7 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
     }
 
     if (num_k != num_kmer) {
-        ERROR("File %s prematurely ended. Expected %d kmers in the model, but "
-              "file had only %d",
-              file, num_kmer, num_k);
+        ERROR("File %s prematurely ended. Expected %d kmers in the model, but file had only %d", file, num_kmer, num_k);
         exit(EXIT_FAILURE);
     }
 

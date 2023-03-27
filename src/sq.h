@@ -19,8 +19,9 @@
 #define MAX_NUM_KMER_METH 15625 //maximum number of k-mers in methylated model
 
 //default model IDs
-#define MODEL_ID_DNA_NUCLEOTIDE 1
-#define MODEL_ID_RNA_NUCLEOTIDE 2
+#define MODEL_ID_DNA_R9_NUCLEOTIDE 1
+#define MODEL_ID_RNA_R9_NUCLEOTIDE 2
+#define MODEL_ID_DNA_R10_NUCLEOTIDE 3
 
 /*******************************************************
  * flags related to the user specified options (opt_t) *
@@ -90,11 +91,6 @@ typedef struct {
     float level_log_stdv;     //pre-calculated for efficiency
 #endif
 
-#ifdef LOAD_SD_MEANSSTDV
-    //float sd_mean;
-    //float sd_stdv;
-    //float weight;
-#endif
 } model_t;
 
 typedef struct{

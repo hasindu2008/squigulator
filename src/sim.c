@@ -481,15 +481,16 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
         k=read_model(core->model, opt.model_file, MODEL_TYPE_NUCLEOTIDE);
     } else {
         if(opt.flag & SQ_R10){
-            ERROR("%s","No built in R10 model yet. Provide custom model using --kmer-model option.");
-            exit(EXIT_FAILURE);
+            INFO("%s","builtin DNA R10 nucleotide model loaded");
+            k=set_model(core->model, MODEL_ID_DNA_R10_NUCLEOTIDE);
         }
         if(opt.flag & SQ_RNA){
-            INFO("%s","builtin RNA nucleotide model loaded");
-            k=set_model(core->model, MODEL_ID_RNA_NUCLEOTIDE);
+            INFO("%s","builtin RNA R9 nucleotide model loaded");
+            k=set_model(core->model, MODEL_ID_RNA_R9_NUCLEOTIDE);
         }
         else{
-            k=set_model(core->model, MODEL_ID_DNA_NUCLEOTIDE);
+            INFO("%s","builtin DNA R9 nucleotide model loaded");
+            k=set_model(core->model, MODEL_ID_DNA_R9_NUCLEOTIDE);
         }
     }
 

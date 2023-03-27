@@ -484,7 +484,7 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
             INFO("%s","builtin DNA R10 nucleotide model loaded");
             k=set_model(core->model, MODEL_ID_DNA_R10_NUCLEOTIDE);
         }
-        else if if(opt.flag & SQ_RNA){
+        else if(opt.flag & SQ_RNA){
             INFO("%s","builtin RNA R9 nucleotide model loaded");
             k=set_model(core->model, MODEL_ID_RNA_R9_NUCLEOTIDE);
         }

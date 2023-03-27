@@ -344,63 +344,75 @@ static void free_ref_sim(ref_t *ref){
 }
 
 
-static void set_header_attributes(slow5_file_t *sp, int8_t rna){
+static void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10){
 
     slow5_hdr_t *header=sp->header;
 
     //add a header group attribute called run_id
     if (slow5_hdr_add("run_id", header) < 0){
-        ERROR("%s","Error adding run_id attribute\n");
+        ERROR("%s","Error adding run_id attribute");
         exit(EXIT_FAILURE);
     }
     //add another header group attribute called asic_id
     if (slow5_hdr_add("asic_id", header) < 0){
-        ERROR("%s","Error adding asic_id attribute\n");
+        ERROR("%s","Error adding asic_id attribute");
         exit(EXIT_FAILURE);
     }
     //add another header group attribute called asic_id
     if (slow5_hdr_add("exp_start_time", header) < 0){
-        ERROR("%s","Error adding asic_id attribute\n");
+        ERROR("%s","Error adding asic_id attribute");
         exit(EXIT_FAILURE);
     }
     //add another header group attribute called flow_cell_id
     if (slow5_hdr_add("flow_cell_id", header) < 0){
-        ERROR("%s","Error adding flow_cell_id attribute\n");
+        ERROR("%s","Error adding flow_cell_id attribute");
         exit(EXIT_FAILURE);
     }
     //add another header group attribute called experiment_type
     if (slow5_hdr_add("experiment_type", header) < 0){
-        ERROR("%s","Error adding experiment_type attribute\n");
+        ERROR("%s","Error adding experiment_type attribute");
+        exit(EXIT_FAILURE);
+    }
+    //add another header group attribute called sequencing_kit
+    if (slow5_hdr_add("sequencing_kit", header) < 0){
+        ERROR("%s","Error adding sequencing_kit attribute");
         exit(EXIT_FAILURE);
     }
 
-
     //set the run_id attribute to "run_0" for read group 0
     if (slow5_hdr_set("run_id", "run_0", 0, header) < 0){
-        ERROR("%s","Error setting run_id attribute in read group 0\n");
+        ERROR("%s","Error setting run_id attribute in read group 0");
         exit(EXIT_FAILURE);
     }
     //set the asic_id attribute to "asic_0" for read group 0
     if (slow5_hdr_set("asic_id", "asic_id_0", 0, header) < 0){
-        ERROR("%s","Error setting asic_id attribute in read group 0\n");
+        ERROR("%s","Error setting asic_id attribute in read group 0");
         exit(EXIT_FAILURE);
     }
     //set the exp_start_time attribute to "2022-07-20T00:00:00Z" for read group 0
     if (slow5_hdr_set("exp_start_time", "2022-07-20T00:00:00Z", 0, header) < 0){
-        ERROR("%s","Error setting exp_start_time attribute in read group 0\n");
+        ERROR("%s","Error setting exp_start_time attribute in read group 0");
         exit(EXIT_FAILURE);
     }
     //set the flow_cell_id attribute to "FAN00000" for read group 0
     if (slow5_hdr_set("flow_cell_id", "FAN00000", 0, header) < 0){
-        ERROR("%s","Error setting flow_cell_id attribute in read group 0\n");
+        ERROR("%s","Error setting flow_cell_id attribute in read group 0");
         exit(EXIT_FAILURE);
     }
     //set the experiment_type attribute to genomic_dna or rna for read group 0
     const char* experiment_type = rna ? "rna" : "genomic_dna" ;
     if (slow5_hdr_set("experiment_type", experiment_type, 0, header) < 0){
-        ERROR("%s","Error setting experiment_type attribute in read group 0\n");
+        ERROR("%s","Error setting experiment_type attribute in read group 0");
         exit(EXIT_FAILURE);
     }
+    //sequencing kit
+    const char* kit = rna ? "sqk-rna002" : (r10 ? "sqk-lsk114" : "sqk-lsk109") ;
+    if (slow5_hdr_set("sequencing_kit", kit, 0, header) < 0){
+        ERROR("%s","Error setting sequencing_kit attribute in read group 0");
+        exit(EXIT_FAILURE);
+    }
+
+
 
 }
 
@@ -507,7 +519,7 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
         exit(EXIT_FAILURE);
     }
 
-    set_header_attributes(core->sp, opt.flag & SQ_RNA ? 1 : 0);
+    set_header_attributes(core->sp, opt.flag & SQ_RNA ? 1 : 0, opt.flag & SQ_R10 ? 1 : 0);
     set_header_aux_fields(core->sp);
 
     if(slow5_hdr_write(core->sp) < 0){

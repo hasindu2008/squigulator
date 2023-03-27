@@ -935,6 +935,9 @@ char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, in
         } else {
             if(nc == -1) {
                 LOG_TRACE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
+                if(ref->ref_lengths[seq_i]<200){
+                    WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
+                }
             } else{
                 LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
             }
@@ -979,6 +982,9 @@ char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, in
         } else {
             if(nc == -1) {
                 LOG_TRACE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
+                if(ref->ref_lengths[seq_i]<200){
+                    WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
+                }
             } else{
                 LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
             }
@@ -1176,6 +1182,10 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if (c == 'r'){
             opt.rlen = atoi(optarg);
             opt_r_gvn = 1;
+            if(opt.rlen < 200){
+                WARNING("Read length %d is too short. Set to minimum length 200. Open an issue if you want short reads.",opt.rlen);
+                opt.rlen = 200;
+            }
         } else if (c == 'K') {
             opt.batch_size = atoi(optarg);
             if (opt.batch_size < 1) {

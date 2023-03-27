@@ -8,19 +8,20 @@
 #include <stdint.h>
 #include "slow5/slow5.h"
 
-#define SQ_VERSION "0.1.0"
+#define SQ_VERSION "0.1.0-dirty"
 
 //model types
 #define MODEL_TYPE_NUCLEOTIDE 1
 #define MODEL_TYPE_METH 2
 
-#define MAX_KMER_SIZE 6 //maximum k-mer size
-#define MAX_NUM_KMER 4096   //maximum number of k-mers in nucleotide model
+#define MAX_KMER_SIZE 9 //maximum k-mer size
+#define MAX_NUM_KMER 262144   //maximum number of k-mers in nucleotide model
 #define MAX_NUM_KMER_METH 15625 //maximum number of k-mers in methylated model
 
 //default model IDs
-#define MODEL_ID_DNA_NUCLEOTIDE 1
-#define MODEL_ID_RNA_NUCLEOTIDE 2
+#define MODEL_ID_DNA_R9_NUCLEOTIDE 1
+#define MODEL_ID_RNA_R9_NUCLEOTIDE 2
+#define MODEL_ID_DNA_R10_NUCLEOTIDE 3
 
 /*******************************************************
  * flags related to the user specified options (opt_t) *
@@ -32,6 +33,7 @@
 #define SQ_IDEAL_TIME 0x008 //signal with no time domain noise
 #define SQ_IDEAL_AMP 0x010 //signal with no time amplitude domain noise
 #define SQ_PREFIX 0x020 //generate prefix or not
+#define SQ_R10 0x040 //R10 or R9
 
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold
@@ -89,11 +91,6 @@ typedef struct {
     float level_log_stdv;     //pre-calculated for efficiency
 #endif
 
-#ifdef LOAD_SD_MEANSSTDV
-    //float sd_mean;
-    //float sd_stdv;
-    //float weight;
-#endif
 } model_t;
 
 typedef struct{
@@ -113,6 +110,8 @@ typedef struct{
 
     int32_t num_thread; //t
     int32_t batch_size; //K
+
+    float amp_noise;
 
 } opt_t;
 
@@ -136,6 +135,7 @@ typedef struct {
 
     //files
     FILE *fp_fasta;
+    FILE *fp_paf;
     slow5_file_t *sp;
 
     //reference
@@ -161,6 +161,7 @@ typedef struct {
     size_t *mem_bytes;
 
     char **fasta;
+    char **paf;
 
     int64_t n_samples;
 

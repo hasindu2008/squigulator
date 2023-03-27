@@ -41,6 +41,9 @@ diff -q test/dna_ideal_time_slow5.exp a.slow5 || die "diff failed"
 echo "--ideal-amp"
 ex ./squigulator test/nCoV-2019.reference.fasta -o a.slow5 -n 2 --seed 1 --ideal-amp  -r 20000  --dwell-std 5.0 -t1 || die "Running the tool failed"
 diff -q test/dna_ideal_amp_slow5.exp a.slow5 || die "diff failed"
+ex ./squigulator test/nCoV-2019.reference.fasta -o a.slow5 -n 2 --seed 1 --amp-noise 0.0  -r 20000  --dwell-std 5.0 -t1 || die "Running the tool failed"
+diff -q test/dna_ideal_amp_slow5.exp a.slow5 || die "diff failed"
+
 
 echo "--prefix=yes"
 ex ./squigulator test/nCoV-2019.reference.fasta -o a.slow5 -n 2 --seed 1 --prefix=yes  -r 20000  --dwell-std 5.0 -t1 || die "Running the tool failed"

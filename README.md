@@ -54,7 +54,8 @@ Basic options in *squigulator* are as below:
 - `-q FILE`: Save the original reads directly taken from the reference genome (without any basecalling errors) in *FASTA* format. Note that these are perfect reads from the reference and for representative nanopore reads you must basecall the SLOW5/BLOW5 file.
 - `-t INT`: Number of threads
 - `-K INT`: batch size (max number of reads created at once). Increase this for better multi-threaded efficiency at cost of more RAM.
-- `-r` Mean read length (estimated mean only, unused for RNA).
+- `-r`: Mean read length (estimated mean only, unused for RNA).
+- `-c`: PAF file to write the alignment of simulated reads (format described [here](https://hasindu2008.github.io/f5c/docs/output#resquiggle-paf-output-format))
 - `--ideal`: To generate perfect signals with no noise. See example [here](docs/img/ideal.svg).
 
 Advanced options are as below:
@@ -85,6 +86,8 @@ squigulator hg38noAlt.fa -x dna-r9-prom -o reads.blow5 -n 1000 --ideal
 # simulate signals for basecalled reads (each complete read will be simulated; not memory optimised yet, will load the while basecalled.fq to memory first)
 squigulator basecalled.fq -x dna-r9-prom -o reads.blow5 --full-contigs
 
+# R10 chemistry PromethION DNA reads
+squigulator hg38noAlt.fa -x dna-r10-prom -o reads.blow5
 ```
 
 RNA examples:
@@ -113,7 +116,7 @@ squigulator na12878_chr22.fa -x dna-r9-prom -o reads.blow5 -n 150000 -r 10000
 
 ## Acknowledgement
 
-The pore-models are from [Nanopolish](https://github.com/jts/nanopolish).
+R9 pore-models are from [Nanopolish](https://github.com/jts/nanopolish) and R10 pore-models derived from [here](https://github.com/nanoporetech/kmer_models).
 Some code snippets have been taken from [Minimap2](https://github.com/lh3/minimap2), [Samtools](http://samtools.sourceforge.net/).
 Kseq from [klib](https://github.com/attractivechaos/klib) is used.
 

@@ -66,12 +66,24 @@ profile_t prom_r9_rna_prof = {
 profile_t prom_r10_dna_prof = {
     .digitisation = 2048,
     .sample_rate = 4000,
-    //.bases_per_second = 450,
+    //.bases_per_second = 400,
     .range = 281.345551,
     .offset_mean=-127.5655735,
     .offset_std=19.377283387665,
     .median_before_mean=189.87607393756,
     .median_before_std=15.788097978713,
+    .dwell_mean=10.0, //this must be sample_rate/bases_per_second for now
+    .dwell_std=4.0
+};
+profile_t minion_r10_dna_prof = {
+    .digitisation = 8192,
+    .sample_rate = 4000,
+    //.bases_per_second = 400,
+    .range = 1536.598389,
+    .offset_mean=13.380569389019,
+    .offset_std=16.311471649012,
+    .median_before_mean=202.15407438804,
+    .median_before_std=13.406139241768,
     .dwell_mean=10.0, //this must be sample_rate/bases_per_second for now
     .dwell_std=4.0
 };
@@ -183,6 +195,9 @@ profile_t set_profile(char *prof_name, opt_t *opt){
     }else if(strcmp(prof_name, "dna-r10-prom") == 0){
         opt->flag |= SQ_R10;
         return prom_r10_dna_prof;
+    }else if(strcmp(prof_name, "dna-r10-min") == 0){
+        opt->flag |= SQ_R10;
+        return minion_r10_dna_prof;
     }else{
         ERROR("Unknown profile: %s\n", prof_name);
         exit(EXIT_FAILURE);
@@ -1077,8 +1092,8 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         } else {
             paf->tid = read_id;
             paf->tlen = n_kmer;
-            paf->t_st = 0;
-            paf->t_end = n_kmer;
+            paf->t_st = rna ? n_kmer : 0;
+            paf->t_end = rna ? 0 : n_kmer;
         }
         db->paf[i] = paf_str(paf);
 
@@ -1236,7 +1251,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         fprintf(fp_help,"\nbasic options:\n");
         fprintf(fp_help,"   -o FILE                    SLOW5/BLOW5 file to write\n");
         fprintf(fp_help,"   -x STR                     parameter profile (always applied before other options) [dna-r9-prom]\n");
-        fprintf(fp_help,"                              e.g., dna-r9-min, dna-r9-prom, rna-r9-min, rna-r9-prom, dna-r10-prom\n");
+        fprintf(fp_help,"                              e.g., dna-r9-min, dna-r9-prom, rna-r9-min, rna-r9-prom, dna-r10-min, dna-r10-prom\n");
         fprintf(fp_help,"   -n INT                     Number of reads to simulate [%ld]\n", nreads);
         fprintf(fp_help,"   -q FILE                    FASTA file to write simulated reads with no errors\n");
         fprintf(fp_help,"   -c FILE                    PAF file to write the alignment of simulated reads\n");

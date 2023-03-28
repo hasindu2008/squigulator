@@ -92,6 +92,8 @@ const char* polya = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 const char *adaptor_dna = "GGCGTCTGCTTGGGTGTTTAACCTTTTTTTTTTAATGTACTTCGTTCAGTTACGTATTGCT";
 const char *adaptor_rna = "TGATGATGAGGGATAGACGATGGTTGTTTCTGTTGGTGCTGATATTGCTTTTTTTTTTTTTATGATGCAAGATACGCAC";
 
+int8_t short_warn = 0;
+
 typedef struct {
     char *read_id;
     int64_t len_raw_signal;
@@ -962,8 +964,9 @@ char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, in
         } else {
             if(nc == -1) {
                 LOG_TRACE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
-                if(ref->ref_lengths[seq_i]<200){
+                if(short_warn==0 && ref->ref_lengths[seq_i]<200){
                     WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
+                    short_warn = 1;
                 }
             } else{
                 LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
@@ -1009,8 +1012,9 @@ char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, in
         } else {
             if(nc == -1) {
                 LOG_TRACE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
-                if(ref->ref_lengths[seq_i]<200){
+                if(short_warn ==0 && ref->ref_lengths[seq_i]<200){
                     WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
+                    short_warn = 1;
                 }
             } else{
                 LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);

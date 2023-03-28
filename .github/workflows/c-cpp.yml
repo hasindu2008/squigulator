@@ -38,7 +38,7 @@ jobs:
   ubuntu_18:
     name: Ubuntu 18
     runs-on: ubuntu-20.04
-    container: ubuntu-18.04
+    container: ubuntu:18.04
     steps:
     - uses: actions/checkout@v2
     - name: install packages

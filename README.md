@@ -35,11 +35,13 @@ The simplest command to generate reads:
 squigulator [OPTIONS] ref_genome.fa -o out_signal.blow5 -n NUM_READS
 ```
 
-By default, DNA PromethION reads will be simulated. Specify the `-x STR` option to set a different profile from the following available pre-sets (inspired by pre-sets in *Minimap2*).
+By default, DNA PromethION reads (R9.4.1) will be simulated. Specify the `-x STR` option to set a different profile from the following available pre-sets (inspired by pre-sets in *Minimap2*).
 - `dna-r9-min`: genomic DNA on MinION R9.4.1 flowcells
 - `dna-r9-prom`: genomic DNA on PromethION R9.4.1 flowcells
 - `rna-r9-min`: direct RNA on MinION R9.4.1 flowcells
 - `rna-r9-prom`: direct RNA on PromethION R9.4.1 flowcells
+- `dna-r10-min`: genomic DNA on MinION R10.4.1 flowcells
+- `dna-r10-prom`: genomic DNA on PromethION R10.4.1 flowcells
 
 If a genomic DNA profile is selected, the input reference must be the reference genome in *FASTA* format. *squigulator* will randomly sample the genome from a uniform distribution and generate reads whose lengths are from a gamma distribution (based on `-r`). If a direct RNA profile is selected, the input reference must be the transcriptome is *FASTA* format. For RNA, *squigulator* will randomly pick transcripts from a uniform distribution and the whole transcript length is simulated.
 
@@ -55,7 +57,7 @@ Basic options in *squigulator* are as below:
 - `-t INT`: Number of threads
 - `-K INT`: batch size (max number of reads created at once). Increase this for better multi-threaded efficiency at cost of more RAM.
 - `-r`: Mean read length (estimated mean only, unused for RNA).
-- `-c`: PAF file to write the alignment of simulated reads (format described [here](https://hasindu2008.github.io/f5c/docs/output#resquiggle-paf-output-format))
+- `-c`: PAF file to write the alignment of simulated reads (format described [here](https://hasindu2008.github.io/f5c/docs/output#resquiggle-paf-output-format). You may use [squigualiser](https://github.com/hiruna72/squigualiser) to visualise the signal annotation.)
 - `--ideal`: To generate perfect signals with no noise. See example [here](docs/img/ideal.svg).
 
 Advanced options are as below:

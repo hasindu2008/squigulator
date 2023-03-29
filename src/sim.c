@@ -69,7 +69,7 @@ profile_t prom_r9_rna_prof = {
 profile_t prom_r10_dna_prof = {
     .digitisation = 2048,
     .sample_rate = 4000,
-    //.bases_per_second = 450,
+    //.bases_per_second = 400,
     .range = 281.345551,
     .offset_mean=-127.5655735,
     .offset_std=19.377283387665,
@@ -78,10 +78,24 @@ profile_t prom_r10_dna_prof = {
     .dwell_mean=10.0, //this must be sample_rate/bases_per_second for now
     .dwell_std=4.0
 };
+profile_t minion_r10_dna_prof = {
+    .digitisation = 8192,
+    .sample_rate = 4000,
+    //.bases_per_second = 400,
+    .range = 1536.598389,
+    .offset_mean=13.380569389019,
+    .offset_std=16.311471649012,
+    .median_before_mean=202.15407438804,
+    .median_before_std=13.406139241768,
+    .dwell_mean=10.0, //this must be sample_rate/bases_per_second for now
+    .dwell_std=4.0
+};
 
 const char* polya = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 const char *adaptor_dna = "GGCGTCTGCTTGGGTGTTTAACCTTTTTTTTTTAATGTACTTCGTTCAGTTACGTATTGCT";
 const char *adaptor_rna = "TGATGATGAGGGATAGACGATGGTTGTTTCTGTTGGTGCTGATATTGCTTTTTTTTTTTTTATGATGCAAGATACGCAC";
+
+int8_t short_warn = 0;
 
 typedef struct {
     char *read_id;
@@ -186,6 +200,9 @@ profile_t set_profile(char *prof_name, opt_t *opt){
     }else if(strcmp(prof_name, "dna-r10-prom") == 0){
         opt->flag |= SQ_R10;
         return prom_r10_dna_prof;
+    }else if(strcmp(prof_name, "dna-r10-min") == 0){
+        opt->flag |= SQ_R10;
+        return minion_r10_dna_prof;
     }else{
         ERROR("Unknown profile: %s\n", prof_name);
         exit(EXIT_FAILURE);
@@ -347,63 +364,75 @@ static void free_ref_sim(ref_t *ref){
 }
 
 
-static void set_header_attributes(slow5_file_t *sp, int8_t rna){
+static void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10){
 
     slow5_hdr_t *header=sp->header;
 
     //add a header group attribute called run_id
     if (slow5_hdr_add("run_id", header) < 0){
-        ERROR("%s","Error adding run_id attribute\n");
+        ERROR("%s","Error adding run_id attribute");
         exit(EXIT_FAILURE);
     }
     //add another header group attribute called asic_id
     if (slow5_hdr_add("asic_id", header) < 0){
-        ERROR("%s","Error adding asic_id attribute\n");
+        ERROR("%s","Error adding asic_id attribute");
         exit(EXIT_FAILURE);
     }
     //add another header group attribute called asic_id
     if (slow5_hdr_add("exp_start_time", header) < 0){
-        ERROR("%s","Error adding asic_id attribute\n");
+        ERROR("%s","Error adding asic_id attribute");
         exit(EXIT_FAILURE);
     }
     //add another header group attribute called flow_cell_id
     if (slow5_hdr_add("flow_cell_id", header) < 0){
-        ERROR("%s","Error adding flow_cell_id attribute\n");
+        ERROR("%s","Error adding flow_cell_id attribute");
         exit(EXIT_FAILURE);
     }
     //add another header group attribute called experiment_type
     if (slow5_hdr_add("experiment_type", header) < 0){
-        ERROR("%s","Error adding experiment_type attribute\n");
+        ERROR("%s","Error adding experiment_type attribute");
+        exit(EXIT_FAILURE);
+    }
+    //add another header group attribute called sequencing_kit
+    if (slow5_hdr_add("sequencing_kit", header) < 0){
+        ERROR("%s","Error adding sequencing_kit attribute");
         exit(EXIT_FAILURE);
     }
 
-
     //set the run_id attribute to "run_0" for read group 0
     if (slow5_hdr_set("run_id", "run_0", 0, header) < 0){
-        ERROR("%s","Error setting run_id attribute in read group 0\n");
+        ERROR("%s","Error setting run_id attribute in read group 0");
         exit(EXIT_FAILURE);
     }
     //set the asic_id attribute to "asic_0" for read group 0
     if (slow5_hdr_set("asic_id", "asic_id_0", 0, header) < 0){
-        ERROR("%s","Error setting asic_id attribute in read group 0\n");
+        ERROR("%s","Error setting asic_id attribute in read group 0");
         exit(EXIT_FAILURE);
     }
     //set the exp_start_time attribute to "2022-07-20T00:00:00Z" for read group 0
     if (slow5_hdr_set("exp_start_time", "2022-07-20T00:00:00Z", 0, header) < 0){
-        ERROR("%s","Error setting exp_start_time attribute in read group 0\n");
+        ERROR("%s","Error setting exp_start_time attribute in read group 0");
         exit(EXIT_FAILURE);
     }
     //set the flow_cell_id attribute to "FAN00000" for read group 0
     if (slow5_hdr_set("flow_cell_id", "FAN00000", 0, header) < 0){
-        ERROR("%s","Error setting flow_cell_id attribute in read group 0\n");
+        ERROR("%s","Error setting flow_cell_id attribute in read group 0");
         exit(EXIT_FAILURE);
     }
     //set the experiment_type attribute to genomic_dna or rna for read group 0
     const char* experiment_type = rna ? "rna" : "genomic_dna" ;
     if (slow5_hdr_set("experiment_type", experiment_type, 0, header) < 0){
-        ERROR("%s","Error setting experiment_type attribute in read group 0\n");
+        ERROR("%s","Error setting experiment_type attribute in read group 0");
         exit(EXIT_FAILURE);
     }
+    //sequencing kit
+    const char* kit = rna ? "sqk-rna002" : (r10 ? "sqk-lsk114" : "sqk-lsk109") ;
+    if (slow5_hdr_set("sequencing_kit", kit, 0, header) < 0){
+        ERROR("%s","Error setting sequencing_kit attribute in read group 0");
+        exit(EXIT_FAILURE);
+    }
+
+
 
 }
 
@@ -484,15 +513,16 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
         k=read_model(core->model, opt.model_file, MODEL_TYPE_NUCLEOTIDE);
     } else {
         if(opt.flag & SQ_R10){
-            ERROR("%s","No built in R10 model yet. Provide custom model using --kmer-model option.");
-            exit(EXIT_FAILURE);
+            INFO("%s","builtin DNA R10 nucleotide model loaded");
+            k=set_model(core->model, MODEL_ID_DNA_R10_NUCLEOTIDE);
         }
-        if(opt.flag & SQ_RNA){
-            INFO("%s","builtin RNA nucleotide model loaded");
-            k=set_model(core->model, MODEL_ID_RNA_NUCLEOTIDE);
+        else if(opt.flag & SQ_RNA){
+            INFO("%s","builtin RNA R9 nucleotide model loaded");
+            k=set_model(core->model, MODEL_ID_RNA_R9_NUCLEOTIDE);
         }
         else{
-            k=set_model(core->model, MODEL_ID_DNA_NUCLEOTIDE);
+            INFO("%s","builtin DNA R9 nucleotide model loaded");
+            k=set_model(core->model, MODEL_ID_DNA_R9_NUCLEOTIDE);
         }
     }
 
@@ -509,7 +539,7 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
         exit(EXIT_FAILURE);
     }
 
-    set_header_attributes(core->sp, opt.flag & SQ_RNA ? 1 : 0);
+    set_header_attributes(core->sp, opt.flag & SQ_RNA ? 1 : 0, opt.flag & SQ_R10 ? 1 : 0);
     set_header_aux_fields(core->sp);
 
     if(slow5_hdr_write(core->sp) < 0){
@@ -732,6 +762,7 @@ int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_
         uint32_t kmer_rank = get_kmer_rank(read+i, kmer_size);
         if(!(ideal || ideal_time)){
             sps = round(grng(core->rand_time[tid]));
+            sps = sps < 1 ? -sps + 1 : sps;
             //fprintf(stderr,"%d %d %d %d\n",*n,n_kmers,*c,sps);
         }
         for(int j=0; j<sps; j++){
@@ -937,6 +968,10 @@ char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, in
         } else {
             if(nc == -1) {
                 LOG_TRACE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
+                if(short_warn==0 && ref->ref_lengths[seq_i]<200){
+                    WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
+                    short_warn = 1;
+                }
             } else{
                 LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
             }
@@ -981,6 +1016,10 @@ char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, in
         } else {
             if(nc == -1) {
                 LOG_TRACE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
+                if(short_warn ==0 && ref->ref_lengths[seq_i]<200){
+                    WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
+                    short_warn = 1;
+                }
             } else{
                 LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
             }
@@ -1061,8 +1100,8 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         } else {
             paf->tid = read_id;
             paf->tlen = n_kmer;
-            paf->t_st = 0;
-            paf->t_end = n_kmer;
+            paf->t_st = rna ? n_kmer : 0;
+            paf->t_end = rna ? 0 : n_kmer;
         }
         db->paf[i] = paf_str(paf);
 
@@ -1178,6 +1217,10 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if (c == 'r'){
             opt.rlen = atoi(optarg);
             opt_r_gvn = 1;
+            if(opt.rlen < 200){
+                WARNING("Read length %d is too short. Set to minimum length 200. Open an issue if you want short reads.",opt.rlen);
+                opt.rlen = 200;
+            }
         } else if (c == 'K') {
             opt.batch_size = atoi(optarg);
             if (opt.batch_size < 1) {
@@ -1216,7 +1259,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         fprintf(fp_help,"\nbasic options:\n");
         fprintf(fp_help,"   -o FILE                    SLOW5/BLOW5 file to write\n");
         fprintf(fp_help,"   -x STR                     parameter profile (always applied before other options) [dna-r9-prom]\n");
-        fprintf(fp_help,"                              e.g., dna-r9-min, dna-r9-prom, rna-r9-min, rna-r9-prom, dna-r10-prom\n");
+        fprintf(fp_help,"                              e.g., dna-r9-min, dna-r9-prom, rna-r9-min, rna-r9-prom, dna-r10-min, dna-r10-prom\n");
         fprintf(fp_help,"   -n INT                     Number of reads to simulate [%ld]\n", nreads);
         fprintf(fp_help,"   -q FILE                    FASTA file to write simulated reads with no errors\n");
         fprintf(fp_help,"   -c FILE                    PAF file to write the alignment of simulated reads\n");

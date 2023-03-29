@@ -759,6 +759,7 @@ int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_
         uint32_t kmer_rank = get_kmer_rank(read+i, kmer_size);
         if(!(ideal || ideal_time)){
             sps = round(nrng(core->rand_time[tid]));
+            sps = sps < 1 ? -sps + 1 : sps;
             //fprintf(stderr,"%d %d %d %d\n",*n,n_kmers,*c,sps);
         }
         for(int j=0; j<sps; j++){

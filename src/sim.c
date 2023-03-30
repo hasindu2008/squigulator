@@ -177,7 +177,13 @@ char *sam_str(aln_t *aln, char *seq, char *rname, int32_t ref_pos_st) {
     sprintf_append(sp, "%s\t%d\t", aln->read_id, flag); //qname, flag
     sprintf_append(sp, "%s\t%ld\t%d\t", rname, (long)ref_pos_st+1, 255); //rname, pos, mapq
     sprintf_append(sp, "%ldM\t%c\t%d\t%d\t",strlen(seq), '*', 0, 0); //cigar, rnext, pnext, tlen
-    str_cat(sp, seq, strlen(seq)); //seq
+    if (aln->strand == '+'){
+        str_cat(sp, seq, strlen(seq));//seq
+    } else {
+        char *rc = reverse_complement(seq);
+        str_cat(sp, rc, strlen(rc));
+        free(rc);
+    }
     sprintf_append(sp, "\t%c\t",'*'); //seq, qual
 
     sprintf_append(sp, "si:Z:%ld,%ld,%ld,%ld\t",(long)aln->sig_start, (long)aln->sig_end, (long)aln->t_st, (long)aln->t_end);

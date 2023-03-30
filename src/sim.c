@@ -179,6 +179,7 @@ static struct option long_options[] = {
     {"batchsize", required_argument, 0, 'K'},      //18 batchsize - number of reads processed at once [1000]
     {"paf", required_argument, 0, 'c'},            //19 output paf file with alognments
     {"amp-noise", required_argument, 0, 0 },       //20 amplitude noise factor
+    {"paf-ref", no_argument, 0, 0 },               //21 in paf, use ref as target
     {0, 0, 0, 0}};
 
 
@@ -930,7 +931,7 @@ static inline int32_t is_bad_read(char *seq, int32_t len){
     return 0;
 }
 
-char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, int32_t *rlen, char *c, int tid){
+char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int tid){
 
     char *seq = NULL;
     while(1){
@@ -945,6 +946,7 @@ char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, in
             if(s>=ref_sum_pos){
                 *ref_id = ref->ref_names[seq_i];
                 *ref_pos = ref_sum_pos-s+ref->ref_lengths[seq_i];
+                *ref_len = ref->ref_lengths[seq_i];
                 break;
             }
         }
@@ -986,7 +988,7 @@ char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, in
     return seq;
 }
 
-char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, int32_t *rlen, char *c, int tid){
+char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int tid){
 
     char *seq = NULL;
     while(1){
@@ -997,6 +999,7 @@ char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, in
         int len = ref->ref_lengths[seq_i];
         *ref_pos=0;
         *ref_id = ref->ref_names[seq_i];
+        *ref_len = len;
 
         //int64_t strand = round(rng(&core->rand_strand));
         *c = '+'; //strand is alwats plus
@@ -1029,8 +1032,8 @@ char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, in
 
 }
 
-static inline char *gen_read(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_pos, int32_t *rlen, char *c, int8_t rna, int tid){
-    return rna ? gen_read_rna(core, ref, ref_id, ref_pos, rlen, c, tid): gen_read_dna(core, ref, ref_id, ref_pos, rlen, c, tid);
+static inline char *gen_read(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int8_t rna, int tid){
+    return rna ? gen_read_rna(core, ref, ref_id, ref_len, ref_pos, rlen, c, tid): gen_read_dna(core, ref, ref_id, ref_len, ref_pos, rlen, c, tid);
 }
 
 /* process the ith read in the batch db */
@@ -1051,6 +1054,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
     char strand = '+';
     int32_t ref_pos_st = 0;
     int32_t ref_pos_end = 0;
+    int32_t ref_len = 0;
 
     slow5_rec_t *slow5_record = slow5_rec_init();
 
@@ -1070,7 +1074,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         ref_pos_st = 0;
         ref_pos_end = rlen;
     } else {
-        seq=gen_read(core, ref, &rid, &ref_pos_st, &rlen, &strand, rna, tid);
+        seq=gen_read(core, ref, &rid, &ref_len, &ref_pos_st, &rlen, &strand, rna, tid);
         ref_pos_end = ref_pos_st+rlen;
     }
     int16_t *raw_signal=gen_sig(core, seq, rlen, &offset, &median_before, &len_raw_signal, rna, tid, paf);
@@ -1089,11 +1093,11 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         paf->len_raw_signal = len_raw_signal;
 
         paf->strand = strand;
-        if(0){ //later expose as options
+        if(core->opt.flag & SQ_PAF_REF){ //later expose as options
             paf->tid = rid;
-            paf->tlen = n_kmer;
+            paf->tlen = !(opt.flag & SQ_FULL_CONTIG) ?  ref_len - core->kmer_size+1: n_kmer;
             paf->t_st = rna ? ref_pos_end - core->kmer_size+1 : ref_pos_st;
-            paf->t_end = rna ? ref_pos_st : ref_pos_end;
+            paf->t_end = rna ? ref_pos_st : ref_pos_end - core->kmer_size+1;
         } else {
             paf->tid = read_id;
             paf->tlen = n_kmer;
@@ -1248,6 +1252,8 @@ int sim_main(int argc, char* argv[], double realtime0) {
             p.dwell_std = atof(optarg);
         } else if (c == 0 && longindex == 20) { //amp-noise
             opt.amp_noise = atof(optarg);
+        } else if (c == 0 && longindex == 21) { //paf-ref
+            opt.flag |= SQ_PAF_REF;
         }
     }
 
@@ -1279,6 +1285,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         fprintf(fp_help,"   --dwell-mean FLOAT         Mean of number of signal samples per base [%f]\n",p.dwell_mean);
         fprintf(fp_help,"   --dwell-std FLOAT          standard deveation of number of signal samples per base [%f]\n",p.dwell_std);
         fprintf(fp_help,"   --amp-noise FLOAT          amplitude domain noise factor [%f]\n",opt.amp_noise);
+        fprintf(fp_help,"   --paf-ref                  in paf output, use the reference as the target instead of read (needs -c)");
         if(fp_help == stdout){
             exit(EXIT_SUCCESS);
         }
@@ -1298,6 +1305,9 @@ int sim_main(int argc, char* argv[], double realtime0) {
     }
     if (rna && opt_r_gvn){
         WARNING("%s","Option -r is ignored for RNA. Complete transcripts are simulated.");
+    }
+    if (opt.flag & SQ_PAF_REF && paf==NULL){
+        WARNING("%s","Option --paf-ref is ineffective with out -c.");
     }
 
     if (opt.seed == 0){

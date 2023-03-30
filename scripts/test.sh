@@ -69,5 +69,8 @@ diff -q test/rna_paf.exp a.slow5 || die "diff failed"
 diff -q test/rna_paf.paf.exp a.paf || die "diff failed"
 diff -q test/rna_paf.fa.exp a.fa || die "diff failed"
 
+# full contig dna paf
+
+# full  contig rna paf 
 
 echo "Test passed"

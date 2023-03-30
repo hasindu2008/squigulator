@@ -110,46 +110,83 @@ typedef struct {
     int64_t ss_c;
 
     int64_t prefix_end;
-} paf_t;
+} aln_t;
 
-paf_t *init_paf() {
-    paf_t *paf = (paf_t*)malloc(sizeof(paf_t));
-    MALLOC_CHK(paf);
-    paf->ss_n = 0;
-    paf->ss_c = 1000; //todo can be the readlen
-    paf->ss = (int32_t*)malloc(paf->ss_c * sizeof(int32_t));
-    MALLOC_CHK(paf->ss);
+aln_t *init_aln() {
+    aln_t *aln = (aln_t*)malloc(sizeof(aln_t));
+    MALLOC_CHK(aln);
+    aln->ss_n = 0;
+    aln->ss_c = 1000; //todo can be the readlen
+    aln->ss = (int32_t*)malloc(aln->ss_c * sizeof(int32_t));
+    MALLOC_CHK(aln->ss);
 
-    paf->prefix_end = 0;
-    return paf;
+    aln->prefix_end = 0;
+    return aln;
 }
 
-void free_paf(paf_t *paf) {
-    free(paf->ss);
-    free(paf);
+void free_aln(aln_t *aln) {
+    free(aln->ss);
+    free(aln);
 }
 
-char *paf_str(paf_t *paf) {
+char *paf_str(aln_t *aln) {
     kstring_t str;
     kstring_t *sp = &str;
-    str_init(sp, paf->tlen*3+1000);
+    str_init(sp, aln->tlen*3+1000);
 
-    assert(paf->sig_end > paf->sig_start);
-    sprintf_append(sp, "%s\t%ld\t%ld\t%ld\t%c\t", paf->read_id, (long)paf->len_raw_signal,(long)paf->sig_start, (long)paf->sig_end, paf->strand);
+    assert(aln->sig_end > aln->sig_start);
+    sprintf_append(sp, "%s\t%ld\t%ld\t%ld\t%c\t", aln->read_id, (long)aln->len_raw_signal,(long)aln->sig_start, (long)aln->sig_end, aln->strand);
     //target: name, start, end
-    sprintf_append(sp, "%s\t%ld\t%ld\t%ld\t", paf->tid, paf->tlen, (long)paf->t_st, (long)paf->t_end);
+    sprintf_append(sp, "%s\t%ld\t%ld\t%ld\t", aln->tid, aln->tlen, (long)aln->t_st, (long)aln->t_end);
     //residue matches, block len, mapq
-    int64_t blocklen = paf->t_end - paf->t_st;
+    int64_t blocklen = aln->t_end - aln->t_st;
     blocklen = blocklen > 0 ? blocklen : -blocklen;
     sprintf_append(sp, "%ld\t%ld\t%d\t",blocklen,blocklen,255);
     sprintf_append(sp, "sc:f:%f\t",1.0);
     sprintf_append(sp, "sh:f:%f\t",0.0);
-    sprintf_append(sp, "ss:Z:",paf->ss);
+    sprintf_append(sp, "ss:Z:");
 
-    int8_t rna = paf->t_st > paf->t_end ? 1 : 0;
-    for(int i=0; i<paf->ss_n; i++) {
-        int idx = rna ? paf->ss_n - i - 1 : i;
-        sprintf_append(sp, "%d,", paf->ss[idx]);
+    int8_t rna = aln->t_st > aln->t_end ? 1 : 0;
+    for(int i=0; i<aln->ss_n; i++) {
+        int idx = rna ? aln->ss_n - i - 1 : i;
+        sprintf_append(sp, "%d,", aln->ss[idx]);
+    }
+
+    sprintf_append(sp, "\n");
+    str.s[str.l] = '\0';
+    return sp->s;
+}
+
+
+void sam_hdr_wr(FILE *fp, ref_t *ref) {
+    for(int i=0; i<ref->num_ref; i++) {
+        fprintf(fp, "@SQ\tSN:%s\tLN:%ld\n", ref->ref_names[i], (long)ref->ref_lengths[i]);
+    }
+    fprintf(fp, "@PG\tID:squigulator\tPN:squigulator\tVN:%s\n", SQ_VERSION);
+
+}
+
+char *sam_str(aln_t *aln, char *seq, char *rname, int32_t ref_pos_st) {
+    kstring_t str;
+    kstring_t *sp = &str;
+    str_init(sp, aln->tlen*3+1000);
+
+    assert(aln->sig_end > aln->sig_start);
+
+    int flag = aln->strand == '+' ? 0 : 16;
+    sprintf_append(sp, "%s\t%d\t", aln->read_id, flag); //qname, flag
+    sprintf_append(sp, "%s\t%ld\t%d\t", rname, (long)ref_pos_st+1, 255); //rname, pos, mapq
+    sprintf_append(sp, "%ldM\t%c\t%d\t%d\t",strlen(seq), '*', 0, 0); //cigar, rnext, pnext, tlen
+    str_cat(sp, seq, strlen(seq)); //seq
+    sprintf_append(sp, "\t%c\t",'*'); //seq, qual
+
+    sprintf_append(sp, "si:Z:%ld,%ld,%ld,%ld\t",(long)aln->sig_start, (long)aln->sig_end, (long)aln->t_st, (long)aln->t_end);
+    sprintf_append(sp, "ss:Z:");
+
+    int8_t rna = aln->t_st > aln->t_end ? 1 : 0;
+    for(int i=0; i<aln->ss_n; i++) {
+        int idx = rna ? aln->ss_n - i - 1 : i;
+        sprintf_append(sp, "%d,", aln->ss[idx]);
     }
 
     sprintf_append(sp, "\n");
@@ -180,6 +217,7 @@ static struct option long_options[] = {
     {"paf", required_argument, 0, 'c'},            //19 output paf file with alognments
     {"amp-noise", required_argument, 0, 0 },       //20 amplitude noise factor
     {"paf-ref", no_argument, 0, 0 },               //21 in paf, use ref as target
+    {"sam", required_argument, 0, 'c'},            //22 output paf file with alognments
     {0, 0, 0, 0}};
 
 
@@ -500,7 +538,7 @@ static void init_rand(core_t *core){
     }
 }
 
-static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_file, char *fasta, char *paf){
+static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_file, char *fasta, char *paf, char *sam){
     core_t *core = (core_t *)malloc(sizeof(core_t));
     core->opt = opt;
 
@@ -561,6 +599,15 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
             exit(EXIT_FAILURE);
         }
     }
+    core->fp_sam = NULL;
+    if(sam){
+        core->fp_sam = fopen(sam,"w");
+        if(core->fp_sam==NULL){
+            fprintf(stderr, "Error opening file %s\n",sam);
+            exit(EXIT_FAILURE);
+        }
+        sam_hdr_wr(core->fp_sam, core->ref);
+    }
 
     core->n_samples = 0;
     core->total_reads = 0;
@@ -599,6 +646,9 @@ void free_core(core_t *core){
     if(core->fp_paf){
         fclose(core->fp_paf);
     }
+    if(core->fp_sam){
+        fclose(core->fp_sam);
+    }
     slow5_close(core->sp);
     free_ref_sim(core->ref);
 
@@ -631,6 +681,12 @@ db_t* init_db(core_t* core, int32_t n_rec) {
     } else {
         db->paf = NULL;
     }
+    if(core->fp_sam){
+        db->sam = (char**)(calloc(db->capacity_rec,sizeof(char*)));
+        MALLOC_CHK(db->sam);
+    } else {
+        db->sam = NULL;
+    }
 
     return db;
 }
@@ -647,6 +703,9 @@ void free_db(db_t* db) {
         if(db->paf){
             free(db->paf[i]);
         }
+        if(db->sam){
+            free(db->sam[i]);
+        }
     }
 
     free(db->mem_records);
@@ -656,6 +715,9 @@ void free_db(db_t* db) {
     }
     if(db->paf){
         free(db->paf);
+    }
+    if(db->sam){
+        free(db->sam);
     }
 
 
@@ -736,7 +798,7 @@ void gen_prefix_dna(int16_t *raw_signal, int64_t* n, int64_t *c, profile_t *prof
 }
 
 
-int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset, const char *read, int32_t len, int tid, paf_t *paf){
+int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset, const char *read, int32_t len, int tid, aln_t *aln){
 
     profile_t *profile = &core->profile;
     uint32_t kmer_size = core->kmer_size;
@@ -754,7 +816,7 @@ int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_
         read="ACGTACGTACGT";
     }
 
-    if(paf) paf->sig_start = 0;
+    if(aln) aln->sig_start = 0;
 
     for (int i=0; i< n_kmers; i++){
         uint32_t kmer_rank = get_kmer_rank(read+i, kmer_size);
@@ -777,24 +839,24 @@ int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_
             raw_signal[*n] = s*(profile->digitisation)/(profile->range)-(offset);
             *n = *n+1;
         }
-        if(paf) {
-            if(paf->ss_n==paf->ss_c){
-                paf->ss_c *= 2;
-                paf->ss = (int32_t *)realloc(paf->ss, paf->ss_c*sizeof(int32_t));
-                MALLOC_CHK(paf->ss);
+        if(aln) {
+            if(aln->ss_n==aln->ss_c){
+                aln->ss_c *= 2;
+                aln->ss = (int32_t *)realloc(aln->ss, aln->ss_c*sizeof(int32_t));
+                MALLOC_CHK(aln->ss);
             }
-            paf->ss[paf->ss_n] = sps >=0 ? sps : 0;
-            paf->ss_n++;
+            aln->ss[aln->ss_n] = sps >=0 ? sps : 0;
+            aln->ss_n++;
         }
     }
 
-    if(paf) paf->sig_end = *n;
+    if(aln) aln->sig_end = *n;
 
     return raw_signal;
 
 }
 
-int16_t *gen_prefix_rna(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset, int tid, paf_t *paf){
+int16_t *gen_prefix_rna(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset, int tid, aln_t *aln){
 
     profile_t *profile = &core->profile;
     //float s;
@@ -812,13 +874,13 @@ int16_t *gen_prefix_rna(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *
     }
 
     const char *stall = "AAAAAGAAAAAACCCCCCCCCCCCCCCCCC";
-    raw_signal=gen_sig_core_seq(core, raw_signal, n, c, offset, stall, strlen(stall), tid, paf);
+    raw_signal=gen_sig_core_seq(core, raw_signal, n, c, offset, stall, strlen(stall), tid, aln);
 
 
     return raw_signal;
 }
 
-char *attach_prefix(core_t *core, const char *read, int32_t *len, paf_t *paf){
+char *attach_prefix(core_t *core, const char *read, int32_t *len, aln_t *aln){
 
     char *s = (char *)read;
     if(core->opt.flag & SQ_RNA){
@@ -846,7 +908,7 @@ char *attach_prefix(core_t *core, const char *read, int32_t *len, paf_t *paf){
     return s;
 }
 
-int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int tid, paf_t *paf){
+int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int tid, aln_t *aln){
 
     profile_t *profile = &core->profile;
     uint32_t kmer_size = core->kmer_size;
@@ -879,14 +941,14 @@ int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offse
 
     char *tmpread = NULL;
     if(core->opt.flag & SQ_PREFIX){
-        read = tmpread = attach_prefix(core, read, &len, paf);
+        read = tmpread = attach_prefix(core, read, &len, aln);
     }
     //fprintf(stderr, "read: %s\n", read);
 
-    raw_signal = gen_sig_core_seq(core, raw_signal, &n, &c, *offset, read, len, tid, paf);
+    raw_signal = gen_sig_core_seq(core, raw_signal, &n, &c, *offset, read, len, tid, aln);
 
     if(core->opt.flag & SQ_PREFIX && core->opt.flag & SQ_RNA){
-        raw_signal=gen_prefix_rna(core, raw_signal,&n,&c, *offset, tid, paf);
+        raw_signal=gen_prefix_rna(core, raw_signal,&n,&c, *offset, tid, aln);
     }
     if(tmpread){
         free(tmpread);
@@ -898,8 +960,8 @@ int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offse
 }
 
 
-static inline int16_t *gen_sig(core_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int8_t rna, int tid, paf_t *paf){
-    int16_t *sig = gen_sig_core(core, read, len, offset, median_before, len_raw_signal, tid, paf);
+static inline int16_t *gen_sig(core_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int8_t rna, int tid, aln_t *aln){
+    int16_t *sig = gen_sig_core(core, read, len, offset, median_before, len_raw_signal, tid, aln);
     if(rna){
         for(int i=0; i<*len_raw_signal/2; i++){
             int16_t tmp = sig[i];
@@ -1063,8 +1125,8 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         exit(EXIT_FAILURE);
     }
 
-    paf_t *paf = NULL;
-    if(core->fp_paf) paf = init_paf();
+    aln_t *aln = NULL;
+    if(core->fp_paf || core->fp_sam) aln = init_aln();
 
     if(opt.flag & SQ_FULL_CONTIG){
         rid = ref->ref_names[core->total_reads+i];
@@ -1077,7 +1139,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         seq=gen_read(core, ref, &rid, &ref_len, &ref_pos_st, &rlen, &strand, rna, tid);
         ref_pos_end = ref_pos_st+rlen;
     }
-    int16_t *raw_signal=gen_sig(core, seq, rlen, &offset, &median_before, &len_raw_signal, rna, tid, paf);
+    int16_t *raw_signal=gen_sig(core, seq, rlen, &offset, &median_before, &len_raw_signal, rna, tid, aln);
     assert(raw_signal != NULL && len_raw_signal > 0);
 
     char *read_id= (char *)malloc(sizeof(char)*(10000));
@@ -1086,27 +1148,28 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         db->fasta[i] = (char *)malloc(sizeof(char)*(strlen(read_id)+strlen(seq)+10)); //+10 bit inefficent - for now
         sprintf(db->fasta[i],">%s\n%s\n",read_id,seq);
     }
-    if(core->fp_paf){
+    if(core->fp_paf || core->fp_sam){
         int64_t n_kmer = rlen - core->kmer_size+1;
         assert(n_kmer > 0);
-        paf->read_id = read_id;
-        paf->len_raw_signal = len_raw_signal;
+        aln->read_id = read_id;
+        aln->len_raw_signal = len_raw_signal;
 
-        paf->strand = strand;
-        if(core->opt.flag & SQ_PAF_REF){ //later expose as options
-            paf->tid = rid;
-            paf->tlen = !(opt.flag & SQ_FULL_CONTIG) ?  ref_len - core->kmer_size+1: n_kmer;
-            paf->t_st = rna ? ref_pos_end - core->kmer_size+1 : ref_pos_st;
-            paf->t_end = rna ? ref_pos_st : ref_pos_end - core->kmer_size+1;
+        aln->strand = strand;
+        if(core->opt.flag & SQ_PAF_REF){
+            aln->tid = rid;
+            aln->tlen = !(opt.flag & SQ_FULL_CONTIG) ?  ref_len - core->kmer_size+1: n_kmer;
+            aln->t_st = rna ? ref_pos_end - core->kmer_size+1 : ref_pos_st;
+            aln->t_end = rna ? ref_pos_st : ref_pos_end - core->kmer_size+1;
         } else {
-            paf->tid = read_id;
-            paf->tlen = n_kmer;
-            paf->t_st = rna ? n_kmer : 0;
-            paf->t_end = rna ? 0 : n_kmer;
+            aln->tid = read_id;
+            aln->tlen = n_kmer;
+            aln->t_st = rna ? n_kmer : 0;
+            aln->t_end = rna ? 0 : n_kmer;
         }
-        db->paf[i] = paf_str(paf);
+        if (core->fp_paf) db->paf[i] = paf_str(aln);
+        if (core->fp_sam) db->sam[i] = sam_str(aln,seq,rid,ref_pos_st);
 
-        free_paf(paf);
+        free_aln(aln);
     }
 
     int64_t n_samples = __sync_fetch_and_add(&core->n_samples, len_raw_signal);
@@ -1156,6 +1219,9 @@ void output_db(core_t* core, db_t* db) {
         if(core->fp_paf){
             fprintf(core->fp_paf,"%s",db->paf[i]);
         }
+        if(core->fp_sam){
+            fprintf(core->fp_sam,"%s",db->sam[i]);
+        }
     }
 
     core->total_reads += db->n_rec;
@@ -1169,7 +1235,7 @@ void output_db(core_t* core, db_t* db) {
 
 int sim_main(int argc, char* argv[], double realtime0) {
 
-    const char* optstring = "o:hVn:q:r:x:v:K:t:c:";
+    const char* optstring = "o:hVn:q:r:x:v:K:t:c:a:";
 
     int longindex = 0;
     int32_t c = -1;
@@ -1178,6 +1244,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
     char *output_file = NULL;
     char *fasta = NULL;
     char *paf = NULL;
+    char *sam = NULL;
 
     opt_t opt;
     init_opt(&opt);
@@ -1236,6 +1303,8 @@ int sim_main(int argc, char* argv[], double realtime0) {
             }
         } else if (c == 'c'){
             paf = optarg;
+        } else if (c == 'a'){
+            sam = optarg;
         } else if (c == 0 && longindex == 9){  //seed
             opt.seed = atoi(optarg);
         } else if (c == 0 && longindex == 10){ //ideal-time
@@ -1266,6 +1335,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         fprintf(fp_help,"   -n INT                     Number of reads to simulate [%ld]\n", nreads);
         fprintf(fp_help,"   -q FILE                    FASTA file to write simulated reads with no errors\n");
         fprintf(fp_help,"   -c FILE                    PAF file to write the alignment of simulated reads\n");
+        fprintf(fp_help,"   -a FILE                    SAM file to write the alignment of simulated reads\n");
         fprintf(fp_help,"   -r INT                     Mean read length (estimate only, unused for direct RNA) [%d]\n",opt.rlen);
         fprintf(fp_help,"   -t INT                     number of threads [%d]\n",opt.num_thread);
         fprintf(fp_help,"   -K INT                     batch size (max number of reads created at once) [%d]\n",opt.batch_size);
@@ -1285,7 +1355,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         fprintf(fp_help,"   --dwell-mean FLOAT         Mean of number of signal samples per base [%f]\n",p.dwell_mean);
         fprintf(fp_help,"   --dwell-std FLOAT          standard deveation of number of signal samples per base [%f]\n",p.dwell_std);
         fprintf(fp_help,"   --amp-noise FLOAT          amplitude domain noise factor [%f]\n",opt.amp_noise);
-        fprintf(fp_help,"   --paf-ref                  in paf output, use the reference as the target instead of read (needs -c)");
+        fprintf(fp_help,"   --paf-ref                  in paf output, use the reference as the target instead of read (needs -c)\n");
         if(fp_help == stdout){
             exit(EXIT_SUCCESS);
         }
@@ -1312,14 +1382,14 @@ int sim_main(int argc, char* argv[], double realtime0) {
 
     if (opt.seed == 0){
         opt.seed = realtime0;
-        VERBOSE("Using random seed: %ld\n",opt.seed);
+        VERBOSE("Using random seed: %ld",opt.seed);
     }
 
     char *refname = argv[optind];
 
     int64_t n = nreads;
 
-    core_t *core = init_core(opt, p, refname, output_file, fasta, paf);
+    core_t *core = init_core(opt, p, refname, output_file, fasta, paf, sam);
 
     if(opt.flag & SQ_FULL_CONTIG){
         n = core->ref->num_ref;

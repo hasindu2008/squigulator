@@ -36,4 +36,4 @@ Following optional tags are present:
 |si  |Z   |coordinates associated with the ss tag below (explained below)                     |
 |ss  |Z   |signal alignment string in format described [here](https://hasindu2008.github.io/f5c/docs/output#resquiggle-paf-output-format)   |
 
-*si* tag contains four command separated values *start_raw*, *end_raw*, *start_kmer* and *end_kmer*, respectively. Those values have the same  as the columns 3,4,8 and 9 in the PAF format explained above when --paf-ref is specified along with -c
+*si* tag contains four comma separated values *start_raw*, *end_raw*, *start_kmer* and *end_kmer*, respectively. Those values have the same  as the columns 3,4,8 and 9 in the PAF format explained above when --paf-ref is specified along with -c

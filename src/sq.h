@@ -34,6 +34,7 @@
 #define SQ_IDEAL_AMP 0x010 //signal with no time amplitude domain noise
 #define SQ_PREFIX 0x020 //generate prefix or not
 #define SQ_R10 0x040 //R10 or R9
+#define SQ_PAF_REF 0x080 //in paf output, use ref as target
 
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold
@@ -136,6 +137,7 @@ typedef struct {
     //files
     FILE *fp_fasta;
     FILE *fp_paf;
+    FILE *fp_sam;
     slow5_file_t *sp;
 
     //reference
@@ -162,6 +164,7 @@ typedef struct {
 
     char **fasta;
     char **paf;
+    char **sam;
 
     int64_t n_samples;
 

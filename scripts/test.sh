@@ -63,11 +63,25 @@ diff -q test/dna_r10_paf.exp a.slow5 || die "diff failed"
 diff -q test/dna_r10_paf.paf.exp a.paf || die "diff failed"
 diff -q test/dna_r10_paf.fa.exp a.fa || die "diff failed"
 
-echo "r9 rna paf out"
-ex ./squigulator -x rna-r9-prom -o a.slow5 -n 1 --seed 1 --dwell-std 3.0 -t1 -t1 test/rnasequin_sequences_2.4.fa -c a.paf -q a.fa
+echo "r9 rna paf out and sam out"
+ex ./squigulator -x rna-r9-prom -o a.slow5 -n 1 --seed 1 --dwell-std 3.0 -t1 -t1 test/rnasequin_sequences_2.4.fa -c a.paf -q a.fa -a a.sam
 diff -q test/rna_paf.exp a.slow5 || die "diff failed"
 diff -q test/rna_paf.paf.exp a.paf || die "diff failed"
+diff -q test/rna_paf.sam.exp a.sam || die "diff failed"
 diff -q test/rna_paf.fa.exp a.fa || die "diff failed"
+
+# --paf-ref and samout
+echo "r10 dna paf out --paf-ref"
+ex ./squigulator -x dna-r10-prom -o a.slow5 -n 2 --seed 2 --dwell-std 4.0 -t1 test/nCoV-2019.reference.fasta -c a.paf --paf-ref -a a.sam
+diff -q test/dna_r10_paf-ref.exp a.slow5 || die "diff failed"
+diff -q test/dna_r10_paf-ref.paf.exp a.paf || die "diff failed"
+diff -q test/dna_r10_paf-ref.sam.exp a.sam || die "diff failed"
+
+# full contig dna paf
+
+# full  contig rna paf
+
+
 
 
 echo "Test passed"

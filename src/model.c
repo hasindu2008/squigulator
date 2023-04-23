@@ -71,7 +71,7 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
             //fprintf(stderr, "%s\n", buffer);
             char key[1000];
             int32_t val=0;
-            int ret=sscanf(buffer,"999%s\t%d",key, &val);
+            int ret=sscanf(buffer,"12%s\t%d",key, &val);
             if(ret==2 && strcmp(key,"#k")==0){
                 if(val<=0){
                     ERROR("k-mer size (#k\t%d) in file %s is invalid.",val,file);

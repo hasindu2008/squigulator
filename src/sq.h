@@ -26,7 +26,6 @@
 /*******************************************************
  * flags related to the user specified options (opt_t) *
  *******************************************************/
-
 #define SQ_RNA 0x001 //if RNA or not
 #define SQ_FULL_CONTIG 0x002 //if fullcontigs
 #define SQ_IDEAL 0x004 //if set, ideal signals with no noise
@@ -38,7 +37,6 @@
 
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold
-
 
 typedef struct{
     char **ref_names;
@@ -91,15 +89,9 @@ typedef struct {
 #ifdef CACHED_LOG
     float level_log_stdv;     //pre-calculated for efficiency
 #endif
-
 } model_t;
 
 typedef struct{
-    //int8_t ideal;
-    //int8_t full_contigs;
-    //int8_t ideal_time;
-    //int8_t ideal_amp;
-
     int32_t rlen;
     int64_t seed;
 
@@ -113,11 +105,9 @@ typedef struct{
     int32_t batch_size; //K
 
     float amp_noise;
-
 } opt_t;
 
 typedef struct {
-
     int64_t *ref_pos;
     int64_t *rand_strand;
     nrng_t **rand_time;
@@ -149,13 +139,11 @@ typedef struct {
     //stats //set by output_db
     int64_t n_samples;
     int64_t total_reads;
-
 } core_t;
 
 
 /* a batch of read data (dynamic data based on the reads) */
 typedef struct {
-
     int32_t n_rec;
     int32_t capacity_rec;
 
@@ -167,7 +155,6 @@ typedef struct {
     char **sam;
 
     int64_t n_samples;
-
 } db_t;
 
 
@@ -182,7 +169,6 @@ typedef struct {
 #ifdef WORK_STEAL
     void *all_pthread_args;
 #endif
-
 } pthread_arg_t;
 
 #endif

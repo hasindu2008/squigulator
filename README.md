@@ -49,7 +49,7 @@ You can basecall the generated raw signal directly from the [BLOW format](https:
 
 Generated read IDs encodes the true mapping positions in a format like `S1_33!chr1!225258409!225267761!-`, which is compatible with [*mapeval* command in *paftools.js* under Minimap2 repository](https://github.com/lh3/minimap2/blob/master/misc/README.md#evaluation).
 
-Visit the [manual page](docs/man) for details of each and every option.
+Visit the [manual page](docs/man.md) for details of each and every option.
 
 ## Examples
 

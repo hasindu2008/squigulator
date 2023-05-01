@@ -1327,6 +1327,11 @@ static void check_args(opt_gvn_t opt_gvn, int8_t rna, opt_t opt, char *paf) {
 
 }
 
+static void print_model_stat(profile_t p){
+    VERBOSE("digitisation: %.1f; sample_rate: %.1f; range: %.1f; offset_mean: %.1f; offset_std: %.1f; dwell_mean: %.1f; dwell_std: %.1f",
+        p.digitisation,p.sample_rate,p.range,p.offset_mean,p.offset_std,p.dwell_mean,p.dwell_std);
+}
+
 int sim_main(int argc, char* argv[], double realtime0) {
 
     const char* optstring = "o:hVn:q:r:x:v:K:t:c:a:f:";
@@ -1481,6 +1486,8 @@ int sim_main(int argc, char* argv[], double realtime0) {
             }
         }
     }
+
+    print_model_stat(core->profile);
 
     int64_t done = 0;
     while(done < n){

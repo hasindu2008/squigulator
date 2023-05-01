@@ -223,7 +223,7 @@ static struct option long_options[] = {
     {"paf", required_argument, 0, 'c'},            //19 output paf file with alognments
     {"amp-noise", required_argument, 0, 0 },       //20 amplitude noise factor
     {"paf-ref", no_argument, 0, 0 },               //21 in paf, use ref as target
-    {"sam", required_argument, 0, 'c'},            //22 output paf file with alognments
+    {"sam", required_argument, 0, 'a'},            //22 output paf file with alognments
     {"coverage", required_argument, 0, 'f'},       //23 coverage
     {"digitisation", required_argument, 0, 0 },    //24 digitisation
     {"sample-rate", required_argument, 0, 0 },     //25 sample_rate
@@ -285,6 +285,7 @@ static inline void yes_or_no(opt_t* opt, uint64_t flag, int long_idx, const char
 
 static nrng_t* init_nrng(int64_t seed,double mean, double std){
     nrng_t *rng = (nrng_t *)malloc(sizeof(nrng_t));
+    MALLOC_CHK(rng);
     rng->m = mean;
     rng->s = std;
     rng->x = seed;
@@ -293,6 +294,7 @@ static nrng_t* init_nrng(int64_t seed,double mean, double std){
 
 static grng_t* init_grng(int64_t seed,double alpha, double beta){
     grng_t *rng = (grng_t *)malloc(sizeof(grng_t));
+    MALLOC_CHK(rng);
     rng->a = alpha;
     rng->b = beta;
     rng->x = seed;
@@ -361,11 +363,15 @@ static ref_t *load_ref(const char *genome){
 
 
     ref_t *ref = (ref_t *) malloc(sizeof(ref_t));
+    MALLOC_CHK(ref);
 
     int c = 1;
     ref->ref_lengths = (int32_t *) malloc(sizeof(int32_t));
+    MALLOC_CHK(ref->ref_lengths);
     ref->ref_names = (char **) malloc(sizeof(char *));
+    MALLOC_CHK(ref->ref_names);
     ref->ref_seq = (char **) malloc(sizeof(char *));
+    MALLOC_CHK(ref->ref_seq);
     ref->sum = 0;
 
     int i = 0;
@@ -381,8 +387,10 @@ static ref_t *load_ref(const char *genome){
 
         ref->ref_lengths[i] = l;
         ref->ref_names[i] = (char *) malloc(strlen(seq->name.s)+1);
+        MALLOC_CHK(ref->ref_names[i]);
         strcpy(ref->ref_names[i], seq->name.s);
         ref->ref_seq[i] = (char *) malloc((l+1)*sizeof(char));
+        MALLOC_CHK(ref->ref_seq[i]);
         strcpy(ref->ref_seq[i], seq->seq.s);
 
         ref->sum += l;
@@ -522,13 +530,13 @@ static void init_rand(core_t *core){
     int t = opt.num_thread;
     profile_t p = core->profile;
 
-    core->ref_pos  = (int64_t *) malloc(t*sizeof(int64_t));
-    core->rand_strand = (int64_t *) malloc(t*sizeof(int64_t));
-    core->rand_time = (nrng_t **) malloc(t*sizeof(nrng_t *));
-    core->rand_rlen = (grng_t **) malloc(t*sizeof(grng_t *));
-    core->rand_offset = (nrng_t **) malloc(t*sizeof(nrng_t *));
-    core->rand_median_before = (nrng_t **) malloc(t*sizeof(nrng_t *));
-    core->kmer_gen = (nrng_t ***) malloc(t*sizeof(nrng_t **));
+    core->ref_pos  = (int64_t *) malloc(t*sizeof(int64_t));             MALLOC_CHK(core->ref_pos);
+    core->rand_strand = (int64_t *) malloc(t*sizeof(int64_t));          MALLOC_CHK(core->rand_strand);
+    core->rand_time = (nrng_t **) malloc(t*sizeof(nrng_t *));           MALLOC_CHK(core->rand_time);
+    core->rand_rlen = (grng_t **) malloc(t*sizeof(grng_t *));           MALLOC_CHK(core->rand_rlen);
+    core->rand_offset = (nrng_t **) malloc(t*sizeof(nrng_t *));         MALLOC_CHK(core->rand_offset);
+    core->rand_median_before = (nrng_t **) malloc(t*sizeof(nrng_t *));  MALLOC_CHK(core->rand_median_before);
+    core->kmer_gen = (nrng_t ***) malloc(t*sizeof(nrng_t **));          MALLOC_CHK(core->kmer_gen);
 
     int64_t seed = opt.seed;
     for(int i=0; i<t; i++){
@@ -539,7 +547,7 @@ static void init_rand(core_t *core){
         core->rand_offset[i] = init_nrng(seed+4, p.offset_mean, p.offset_std);
         core->rand_median_before[i] = init_nrng(seed+5, p.median_before_mean, p.median_before_std);
 
-        core->kmer_gen[i] = (nrng_t **)malloc(sizeof(nrng_t *) * n);
+        core->kmer_gen[i] = (nrng_t **)malloc(sizeof(nrng_t *) * n); MALLOC_CHK(core->kmer_gen[i]);
         for (uint32_t j = 0; j < n; j++){
             core->kmer_gen[i][j] = init_nrng(seed+j, m[j].level_mean, m[j].level_stdv*opt.amp_noise);
         }
@@ -549,11 +557,12 @@ static void init_rand(core_t *core){
 }
 
 static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_file, char *fasta, char *paf, char *sam){
-    core_t *core = (core_t *)malloc(sizeof(core_t));
+    core_t *core = (core_t *)malloc(sizeof(core_t)); MALLOC_CHK(core);
     core->opt = opt;
 
     core->profile = p;
     core->model = (model_t*)malloc(sizeof(model_t) * MAX_NUM_KMER); //todo not very memory efficient - do dynamically
+    MALLOC_CHK(core->model);
     uint32_t k = 0;
     if (opt.model_file) {
         k=read_model(core->model, opt.model_file, MODEL_TYPE_NUCLEOTIDE);
@@ -897,6 +906,7 @@ char *attach_prefix(core_t *core, const char *read, int32_t *len, aln_t *aln){
         int polya_len = strlen(polya);
         int adapt_len = strlen(adaptor_rna);
         char *seq = malloc((*len+polya_len+adapt_len+1)*sizeof(char));
+        MALLOC_CHK(seq);
         strncpy(seq, read, *len);
         strncpy(seq+*len, polya, polya_len);
         strncpy(seq+*len+polya_len, adaptor_rna, adapt_len);
@@ -908,6 +918,7 @@ char *attach_prefix(core_t *core, const char *read, int32_t *len, aln_t *aln){
         int stall_len = strlen(stall);
         int adapt_len = strlen(adaptor_dna);
         char *seq = malloc((*len+stall_len+adapt_len+1)*sizeof(char));
+        MALLOC_CHK(seq);
         strncpy(seq, stall, stall_len);
         strncpy(seq+stall_len, adaptor_dna, adapt_len);
         strncpy(seq+stall_len+adapt_len, read, *len);
@@ -935,6 +946,7 @@ int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offse
 
     int64_t c = n_kmers * sps + 2000;
     int16_t *raw_signal = (int16_t *)malloc(c*sizeof(int16_t));
+    MALLOC_CHK(raw_signal);
 
     if(ideal) {
         *offset = profile->offset_mean;
@@ -1028,6 +1040,7 @@ char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, in
         *c = strand ? '+' : '-';
 
         seq= (char *)malloc((len+1)*sizeof(char));
+        MALLOC_CHK(seq);
         strncpy(seq,(ref->ref_seq[seq_i])+(*ref_pos),len);
         seq[len] = '\0';
         *rlen = strlen(seq);
@@ -1077,6 +1090,7 @@ char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, in
         *c = '+'; //strand is alwats plus
 
         seq= (char *)malloc((len+1)*sizeof(char));
+        MALLOC_CHK(seq);
         strncpy(seq,(ref->ref_seq[seq_i])+(*ref_pos),len);
         seq[len] = '\0';
         *rlen = strlen(seq);
@@ -1153,9 +1167,11 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
     assert(raw_signal != NULL && len_raw_signal > 0);
 
     char *read_id= (char *)malloc(sizeof(char)*(10000));
+    MALLOC_CHK(read_id);
     sprintf(read_id,"S1_%ld!%s!%d!%d!%c",core->total_reads+i+1, rid, ref_pos_st, ref_pos_end, strand);
     if(core->fp_fasta){
         db->fasta[i] = (char *)malloc(sizeof(char)*(strlen(read_id)+strlen(seq)+10)); //+10 bit inefficent - for now
+        MALLOC_CHK(db->fasta[i]);
         sprintf(db->fasta[i],">%s\n%s\n",read_id,seq);
     }
     if(core->fp_paf || core->fp_sam){
@@ -1299,6 +1315,20 @@ typedef struct {
     int8_t bps;
 } opt_gvn_t;
 
+static inline void check_noneg_farg(float arg, char *arg_name){
+    if(arg < 0){
+        ERROR("%s should be non negative. You entered %.1f",arg_name, arg);
+        exit(EXIT_FAILURE);
+    }
+}
+
+static inline void check_pos_iarg(int64_t arg, char *arg_name){
+    if(arg < 1){
+        ERROR("%s should be larger than 0. You entered %ld.",arg_name, arg);
+        exit(EXIT_FAILURE);
+    }
+}
+
 static void check_args(opt_gvn_t opt_gvn, int8_t rna, opt_t opt, char *paf) {
     //-n incompatible with --full-contigs
     if(opt_gvn.n && opt_gvn.full_contigs){
@@ -1378,6 +1408,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if (c == 'n'){
             nreads = atoi(optarg);
             opt_gvn.n = 1;
+            check_pos_iarg(nreads,"Number of reads");
         } else if (c == 'q'){
             fasta = optarg;
         } else if (c == 'r'){
@@ -1389,16 +1420,10 @@ int sim_main(int argc, char* argv[], double realtime0) {
             }
         } else if (c == 'K') {
             opt.batch_size = atoi(optarg);
-            if (opt.batch_size < 1) {
-                ERROR("Batch size should larger than 0. You entered %d",opt.batch_size);
-                exit(EXIT_FAILURE);
-            }
+            check_pos_iarg(opt.batch_size, "Batch size");
         } else if (c == 't') {
             opt.num_thread = atoi(optarg);
-            if (opt.num_thread < 1) {
-                ERROR("Number of threads should larger than 0. You entered %d", opt.num_thread);
-                exit(EXIT_FAILURE);
-            }
+            check_pos_iarg(opt.num_thread, "Number of threads");
         } else if (c == 'c'){
             paf = optarg;
         } else if (c == 'a'){
@@ -1406,10 +1431,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if (c == 'f'){
             opt_gvn.f = 1;
             coverage = atoi(optarg);
-            if (coverage < 1) {
-                ERROR("Coverage should larger than 0. You entered %ld", coverage);
-                exit(EXIT_FAILURE);
-            }
+            check_pos_iarg(coverage,"Coverage");
         } else if (c == 0 && longindex == 9){  //seed
             opt.seed = atoi(optarg);
         } else if (c == 0 && longindex == 10){ //ideal-time
@@ -1419,14 +1441,17 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if (c == 0 && longindex == 12){ //dwell-mean
             opt_gvn.dwell_mean = 1;
             p.dwell_mean = atof(optarg);
+            check_noneg_farg(p.dwell_mean, "--dwell-mean");
         } else if (c == 0 && longindex == 14) { //custom nucleotide model file
             opt.model_file = optarg;
         } else if (c == 0 && longindex == 15) { //prefix
             yes_or_no(&opt, SQ_PREFIX, longindex, optarg, 1);
         } else if (c == 0 && longindex == 16) { //dwell-std
             p.dwell_std = atof(optarg);
+            check_noneg_farg(p.dwell_std, "--dwell-std");
         } else if (c == 0 && longindex == 20) { //amp-noise
             opt.amp_noise = atof(optarg);
+            check_noneg_farg(opt.amp_noise, "--amp-noise");
         } else if (c == 0 && longindex == 21) { //paf-ref
             opt.flag |= SQ_PAF_REF;
         } else if (c == 0 && longindex == 24) { //digitisation
@@ -1442,14 +1467,15 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if (c == 0 && longindex == 29) { //bases per second
             bps = atoi(optarg);
             opt_gvn.bps = 1;
-            if(bps < 1){
-                ERROR("Bases per second should larger than 0. You entered %d",bps);
-                exit(EXIT_FAILURE);
-            }
+            check_pos_iarg(bps,"Bases per second");
+        } else if (c == '?'){
+            exit(EXIT_FAILURE);
+        } else {
+            exit(EXIT_FAILURE);
         }
     }
 
-    if (argc-optind<1 || output_file==NULL ||  fp_help == stdout) {
+    if (argc-optind<1 || argc-optind> 1 || output_file==NULL ||  fp_help == stdout) {
         print_help(fp_help, opt, p, nreads);
     }
 

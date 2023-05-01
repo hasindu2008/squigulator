@@ -12,11 +12,22 @@ Reads directly extracted from the reference genome are simulated without any mut
 
 *squigulator* started as *ssssim* (Stupidly Simple Signal Simulator). For an experiment, [kisarur](https://github.com/kisarur) wanted some simulated data. After [hiruna72](https://github.com/hiruna72) trying ~3 days to get an existing simulator installed (dependency and compatibility issues), I thought that writing a simple tool from scratch is easier (Indeed, when writing BLOW5 files, not over complicated formats like FAST5 or POD5 that would consume months -- would not think about writing a simulator in the first place then.) After getting the basic *ssssim* implemented in ~8 hours and successfully basecalling using buttery-eel, I realised that it has worked much better than anticipated. Then, I decided to extend it with different features and options. The result is *sigsim* which was eventually named as *squigulator*, a cool name suggested by [IraDeveson](https://github.com/IraDeveson).
 
-## Building
+## Installation
+
+For x86-64 Linux, you can use the precompiled binaries under [releases](https://github.com/hasindu2008/squigulator/releases):
+
+```
+VERSION=0.1.0
+wget https://github.com/hasindu2008/squigulator/releases/download/v${VERSION}/squigulator-v${VERSION}-x86_64-linux-binaries.tar.gz
+tar xf squigulator-v${VERSION}-x86_64-linux-binaries.tar.gz  && cd squigulator-v${VERSION}
+./squigulator --help
+```
+
+To build squigulator you need a C compiler that supports C99 standard (with X/Open 7 POSIX 2008 extensions):
 
 ```
 sudo apt-get install zlib1g-dev   #install zlib development libraries
-git clone https://github.com/hasindu2008/squigulator
+git clone https://github.com/hasindu2008/squigulator # alternatively download a release tarball from under https://github.com/hasindu2008/squigulator/releases/ and extract
 cd squigulator
 make
 ```

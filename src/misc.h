@@ -103,7 +103,6 @@ static inline float *signal_in_picoamps(slow5_rec_t *rec){
 }
 
 static inline int8_t drna_detect(slow5_file_t *sp){
-
     const slow5_hdr_t* hdr = sp->header;
     int8_t rna = 0;
     char *exp =slow5_hdr_get("experiment_type", 0, hdr);

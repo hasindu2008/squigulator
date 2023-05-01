@@ -223,7 +223,14 @@ static struct option long_options[] = {
     {"paf", required_argument, 0, 'c'},            //19 output paf file with alognments
     {"amp-noise", required_argument, 0, 0 },       //20 amplitude noise factor
     {"paf-ref", no_argument, 0, 0 },               //21 in paf, use ref as target
-    {"sam", required_argument, 0, 'c'},            //22 output paf file with alognments
+    {"sam", required_argument, 0, 'a'},            //22 output paf file with alognments
+    {"coverage", required_argument, 0, 'f'},       //23 coverage
+    {"digitisation", required_argument, 0, 0 },    //24 digitisation
+    {"sample-rate", required_argument, 0, 0 },     //25 sample_rate
+    {"range", required_argument, 0, 0 },           //26 range
+    {"offset-mean", required_argument, 0, 0 },     //27 offset_mean
+    {"offset-std", required_argument, 0, 0 },      //28 offset-std
+    {"bps", required_argument, 0, 0 },             //29 bases per second
     {0, 0, 0, 0}};
 
 
@@ -278,6 +285,7 @@ static inline void yes_or_no(opt_t* opt, uint64_t flag, int long_idx, const char
 
 static nrng_t* init_nrng(int64_t seed,double mean, double std){
     nrng_t *rng = (nrng_t *)malloc(sizeof(nrng_t));
+    MALLOC_CHK(rng);
     rng->m = mean;
     rng->s = std;
     rng->x = seed;
@@ -286,6 +294,7 @@ static nrng_t* init_nrng(int64_t seed,double mean, double std){
 
 static grng_t* init_grng(int64_t seed,double alpha, double beta){
     grng_t *rng = (grng_t *)malloc(sizeof(grng_t));
+    MALLOC_CHK(rng);
     rng->a = alpha;
     rng->b = beta;
     rng->x = seed;
@@ -352,15 +361,19 @@ static ref_t *load_ref(const char *genome){
     seq = kseq_init(fp);
     MALLOC_CHK(seq);
 
-
     ref_t *ref = (ref_t *) malloc(sizeof(ref_t));
+    MALLOC_CHK(ref);
 
     int c = 1;
     ref->ref_lengths = (int32_t *) malloc(sizeof(int32_t));
+    MALLOC_CHK(ref->ref_lengths);
     ref->ref_names = (char **) malloc(sizeof(char *));
+    MALLOC_CHK(ref->ref_names);
     ref->ref_seq = (char **) malloc(sizeof(char *));
+    MALLOC_CHK(ref->ref_seq);
     ref->sum = 0;
 
+    int8_t large_warn = 1;
     int i = 0;
     while ((l = kseq_read(seq)) >= 0) {
         assert(l==(int)strlen(seq->seq.s));
@@ -374,12 +387,19 @@ static ref_t *load_ref(const char *genome){
 
         ref->ref_lengths[i] = l;
         ref->ref_names[i] = (char *) malloc(strlen(seq->name.s)+1);
+        MALLOC_CHK(ref->ref_names[i]);
         strcpy(ref->ref_names[i], seq->name.s);
         ref->ref_seq[i] = (char *) malloc((l+1)*sizeof(char));
+        MALLOC_CHK(ref->ref_seq[i]);
         strcpy(ref->ref_seq[i], seq->seq.s);
 
         ref->sum += l;
         i++;
+
+        if(large_warn && ref->sum > 20000000000){
+            WARNING("%s","The input FASTA/FASTQ file seems >20 Gbases. You are seeing this warning because part by part loading is not implemented. If you input file is larger than available RAM, terminate the programme and open an issue on github. The feature will then be implemented as soon as possible.");
+            large_warn = 0;
+        }
 
     }
 
@@ -387,6 +407,8 @@ static ref_t *load_ref(const char *genome){
 
     kseq_destroy(seq);
     gzclose(fp);
+
+    VERBOSE("Loaded %d reference sequences with total length %f Mbases",ref->num_ref,ref->sum/1000000.0);
 
     return ref;
 
@@ -473,9 +495,6 @@ static void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10){
         ERROR("%s","Error setting sequencing_kit attribute in read group 0");
         exit(EXIT_FAILURE);
     }
-
-
-
 }
 
 static void set_header_aux_fields(slow5_file_t *sp){
@@ -518,13 +537,13 @@ static void init_rand(core_t *core){
     int t = opt.num_thread;
     profile_t p = core->profile;
 
-    core->ref_pos  = (int64_t *) malloc(t*sizeof(int64_t));
-    core->rand_strand = (int64_t *) malloc(t*sizeof(int64_t));
-    core->rand_time = (nrng_t **) malloc(t*sizeof(nrng_t *));
-    core->rand_rlen = (grng_t **) malloc(t*sizeof(grng_t *));
-    core->rand_offset = (nrng_t **) malloc(t*sizeof(nrng_t *));
-    core->rand_median_before = (nrng_t **) malloc(t*sizeof(nrng_t *));
-    core->kmer_gen = (nrng_t ***) malloc(t*sizeof(nrng_t **));
+    core->ref_pos  = (int64_t *) malloc(t*sizeof(int64_t));             MALLOC_CHK(core->ref_pos);
+    core->rand_strand = (int64_t *) malloc(t*sizeof(int64_t));          MALLOC_CHK(core->rand_strand);
+    core->rand_time = (nrng_t **) malloc(t*sizeof(nrng_t *));           MALLOC_CHK(core->rand_time);
+    core->rand_rlen = (grng_t **) malloc(t*sizeof(grng_t *));           MALLOC_CHK(core->rand_rlen);
+    core->rand_offset = (nrng_t **) malloc(t*sizeof(nrng_t *));         MALLOC_CHK(core->rand_offset);
+    core->rand_median_before = (nrng_t **) malloc(t*sizeof(nrng_t *));  MALLOC_CHK(core->rand_median_before);
+    core->kmer_gen = (nrng_t ***) malloc(t*sizeof(nrng_t **));          MALLOC_CHK(core->kmer_gen);
 
     int64_t seed = opt.seed;
     for(int i=0; i<t; i++){
@@ -535,7 +554,7 @@ static void init_rand(core_t *core){
         core->rand_offset[i] = init_nrng(seed+4, p.offset_mean, p.offset_std);
         core->rand_median_before[i] = init_nrng(seed+5, p.median_before_mean, p.median_before_std);
 
-        core->kmer_gen[i] = (nrng_t **)malloc(sizeof(nrng_t *) * n);
+        core->kmer_gen[i] = (nrng_t **)malloc(sizeof(nrng_t *) * n); MALLOC_CHK(core->kmer_gen[i]);
         for (uint32_t j = 0; j < n; j++){
             core->kmer_gen[i][j] = init_nrng(seed+j, m[j].level_mean, m[j].level_stdv*opt.amp_noise);
         }
@@ -545,11 +564,12 @@ static void init_rand(core_t *core){
 }
 
 static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_file, char *fasta, char *paf, char *sam){
-    core_t *core = (core_t *)malloc(sizeof(core_t));
+    core_t *core = (core_t *)malloc(sizeof(core_t)); MALLOC_CHK(core);
     core->opt = opt;
 
     core->profile = p;
     core->model = (model_t*)malloc(sizeof(model_t) * MAX_NUM_KMER); //todo not very memory efficient - do dynamically
+    MALLOC_CHK(core->model);
     uint32_t k = 0;
     if (opt.model_file) {
         k=read_model(core->model, opt.model_file, MODEL_TYPE_NUCLEOTIDE);
@@ -726,7 +746,6 @@ void free_db(db_t* db) {
         free(db->sam);
     }
 
-
     free(db);
 }
 
@@ -773,7 +792,6 @@ static void set_record_aux_fields(slow5_rec_t *slow5_record, slow5_file_t *sp, d
         ERROR("%s","Error setting start_time auxilliary field\n");
         exit(EXIT_FAILURE);
     }
-
 
 }
 
@@ -893,6 +911,7 @@ char *attach_prefix(core_t *core, const char *read, int32_t *len, aln_t *aln){
         int polya_len = strlen(polya);
         int adapt_len = strlen(adaptor_rna);
         char *seq = malloc((*len+polya_len+adapt_len+1)*sizeof(char));
+        MALLOC_CHK(seq);
         strncpy(seq, read, *len);
         strncpy(seq+*len, polya, polya_len);
         strncpy(seq+*len+polya_len, adaptor_rna, adapt_len);
@@ -904,6 +923,7 @@ char *attach_prefix(core_t *core, const char *read, int32_t *len, aln_t *aln){
         int stall_len = strlen(stall);
         int adapt_len = strlen(adaptor_dna);
         char *seq = malloc((*len+stall_len+adapt_len+1)*sizeof(char));
+        MALLOC_CHK(seq);
         strncpy(seq, stall, stall_len);
         strncpy(seq+stall_len, adaptor_dna, adapt_len);
         strncpy(seq+stall_len+adapt_len, read, *len);
@@ -931,6 +951,7 @@ int16_t *gen_sig_core(core_t *core, const char *read, int32_t len, double *offse
 
     int64_t c = n_kmers * sps + 2000;
     int16_t *raw_signal = (int16_t *)malloc(c*sizeof(int16_t));
+    MALLOC_CHK(raw_signal);
 
     if(ideal) {
         *offset = profile->offset_mean;
@@ -983,6 +1004,9 @@ static inline int32_t is_bad_read(char *seq, int32_t len){
     if (len < 200){
         return -1;
     }
+    if (len >= UINT32_MAX){
+        return -2;
+    }
     int64_t r = 100;
     int nc = 0;
     for (int i=0; i<len; i++){
@@ -1024,6 +1048,7 @@ char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, in
         *c = strand ? '+' : '-';
 
         seq= (char *)malloc((len+1)*sizeof(char));
+        MALLOC_CHK(seq);
         strncpy(seq,(ref->ref_seq[seq_i])+(*ref_pos),len);
         seq[len] = '\0';
         *rlen = strlen(seq);
@@ -1034,12 +1059,15 @@ char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, in
            break;
         } else {
             if(nc == -1) {
-                LOG_TRACE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
+                LOG_TRACE("Too short read: <%d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
                 if(short_warn==0 && ref->ref_lengths[seq_i]<200){
                     WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
                     short_warn = 1;
                 }
-            } else{
+            }else if (nc == -2){
+                WARNING("Too long read: >=%d. %s:%d-%d. Trying again!",UINT32_MAX,*ref_id,*ref_pos,*ref_pos+*rlen);
+            }
+            else{
                 LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
             }
             free(seq);
@@ -1073,6 +1101,7 @@ char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, in
         *c = '+'; //strand is alwats plus
 
         seq= (char *)malloc((len+1)*sizeof(char));
+        MALLOC_CHK(seq);
         strncpy(seq,(ref->ref_seq[seq_i])+(*ref_pos),len);
         seq[len] = '\0';
         *rlen = strlen(seq);
@@ -1083,12 +1112,15 @@ char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, in
            break;
         } else {
             if(nc == -1) {
-                LOG_TRACE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
+                LOG_TRACE("Too short read: <%d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
                 if(short_warn ==0 && ref->ref_lengths[seq_i]<200){
                     WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
                     short_warn = 1;
                 }
-            } else{
+            } else if (nc == -2){
+                WARNING("Too long read: >=%d. %s:%d-%d. Trying again!",UINT32_MAX,*ref_id,*ref_pos,*ref_pos+*rlen);
+            }
+            else{
                 LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
             }
             free(seq);
@@ -1145,13 +1177,22 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         seq=gen_read(core, ref, &rid, &ref_len, &ref_pos_st, &rlen, &strand, rna, tid);
         ref_pos_end = ref_pos_st+rlen;
     }
+    if(rlen*core->profile.dwell_mean >= UINT32_MAX ){
+        WARNING("Read %s:%d-%d length*dwell_mean is too large: %ld. Double check parameters. May go out of memory.",rid,ref_pos_st,ref_pos_end,(int64_t)(rlen*core->profile.dwell_mean));
+    }
     int16_t *raw_signal=gen_sig(core, seq, rlen, &offset, &median_before, &len_raw_signal, rna, tid, aln);
     assert(raw_signal != NULL && len_raw_signal > 0);
+    if(len_raw_signal >= UINT32_MAX){
+        ERROR("Read %s:%d-%d has too many samples: %ld. Double check parameters.",rid,ref_pos_st,ref_pos_end,len_raw_signal);
+        exit(EXIT_FAILURE);
+    }
 
     char *read_id= (char *)malloc(sizeof(char)*(10000));
+    MALLOC_CHK(read_id);
     sprintf(read_id,"S1_%ld!%s!%d!%d!%c",core->total_reads+i+1, rid, ref_pos_st, ref_pos_end, strand);
     if(core->fp_fasta){
         db->fasta[i] = (char *)malloc(sizeof(char)*(strlen(read_id)+strlen(seq)+10)); //+10 bit inefficent - for now
+        MALLOC_CHK(db->fasta[i]);
         sprintf(db->fasta[i],">%s\n%s\n",read_id,seq);
     }
     if(core->fp_paf || core->fp_sam){
@@ -1238,10 +1279,119 @@ void output_db(core_t* core, db_t* db) {
 
 }
 
+static void print_help(FILE *fp_help, opt_t opt, profile_t p, int64_t nreads) {
+
+    fprintf(fp_help,"Usage: squigulator [OPTIONS] ref.fa -o out_signal.blow5\n");
+    fprintf(fp_help,"\nbasic options:\n");
+    fprintf(fp_help,"   -o FILE                    SLOW5/BLOW5 file to write\n");
+    fprintf(fp_help,"   -x STR                     parameter profile (always applied before other options) [dna-r9-prom]\n");
+    fprintf(fp_help,"                              e.g., dna-r9-min, dna-r9-prom, rna-r9-min, rna-r9-prom, dna-r10-min, dna-r10-prom\n");
+    fprintf(fp_help,"   -n INT                     number of reads to simulate [%ld]\n", nreads);
+    fprintf(fp_help,"   -r INT                     mean read length (estimate only, unused for direct RNA) [%d]\n",opt.rlen);
+    fprintf(fp_help,"   -f INT                     fold coverage to simulate (incompatible with -n)\n");
+    fprintf(fp_help,"   -t INT                     number of threads [%d]\n",opt.num_thread);
+
+    fprintf(fp_help,"   -h                         help\n");
+    fprintf(fp_help,"   --ideal                    generate ideal signals with no noise\n");
+    fprintf(fp_help,"   --version                  print version\n");
+    fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",(int)get_log_level());
+    fprintf(fp_help,"   --full-contigs             generate signals for complete contigs (incompatible with -n, -r and -n)\n");
+
+    fprintf(fp_help,"\nadvanced options:\n");
+    fprintf(fp_help,"   -K INT                     batch size (max number of reads created at once) [%d]\n",opt.batch_size);
+    fprintf(fp_help,"   -q FILE                    FASTA file to write simulated reads with no errors\n");
+    fprintf(fp_help,"   -c FILE                    PAF file to write the alignment of simulated reads\n");
+    fprintf(fp_help,"   -a FILE                    SAM file to write the alignment of simulated reads\n");
+    fprintf(fp_help,"   --ideal-amp                generate signals with no amplitiude domain noise\n");
+    fprintf(fp_help,"   --ideal-time               generate signals with no time domain noise\n");
+    fprintf(fp_help,"   --amp-noise FLOAT          amplitude domain noise factor [%.1f]\n",opt.amp_noise);
+    fprintf(fp_help,"   --dwell-mean FLOAT         mean of number of signal samples per base [%.1f]\n",p.dwell_mean);
+    fprintf(fp_help,"   --dwell-std FLOAT          standard deviation of number of signal samples per base [%.1f]\n",p.dwell_std);
+    fprintf(fp_help,"   --bps INT                  translocation speed in bases per second (incompatible with --dwell-mean) [%ld]\n",(long)(p.sample_rate/p.dwell_mean));
+    fprintf(fp_help,"   --kmer-model FILE          custom nucleotide k-mer model file (format similar to https://github.com/hasindu2008/f5c/blob/master/test/r9-models/r9.4_450bps.nucleotide.6mer.template.model)\n");
+    fprintf(fp_help,"   --prefix=yes|no            generate prefixes such as adaptor (and polya for RNA) [no]\n");
+    fprintf(fp_help,"   --seed INT                 seed or random generators (if 0, will be autogenerated) [%ld]\n",opt.seed);
+    fprintf(fp_help,"   --paf-ref                  in paf output, use the reference as the target instead of read (needs -c)\n");
+
+    fprintf(fp_help,"\ndeveloper options (not much tested yet):\n");
+    fprintf(fp_help,"   --digitisation FLOAT       ADC digitisation [%.1f]\n",p.digitisation);
+    fprintf(fp_help,"   --sample-rate FLOAT        ADC sampling rate [%.1f]\n",p.sample_rate);
+    fprintf(fp_help,"   --range FLOAT              ADC range [%.1f]\n",p.range);
+    fprintf(fp_help,"   --offset-mean FLOAT        ADC offset mean [%.1f]\n",p.offset_mean);
+    fprintf(fp_help,"   --offset-std FLOAT         ADC offset standard deviation [%.1f]\n",p.offset_std);
+
+    if(fp_help == stdout){
+        exit(EXIT_SUCCESS);
+    }
+    exit(EXIT_FAILURE);
+
+}
+
+typedef struct {
+    int8_t n;
+    int8_t r;
+    int8_t full_contigs;
+    int8_t f;
+    int8_t dwell_mean;
+    int8_t bps;
+} opt_gvn_t;
+
+static inline void check_noneg_farg(float arg, char *arg_name){
+    if(arg < 0){
+        ERROR("%s should be non negative. You entered %.1f",arg_name, arg);
+        exit(EXIT_FAILURE);
+    }
+}
+static inline void check_pos_farg(float arg, char *arg_name){
+    if(arg < 1){
+        ERROR("%s should be larger than 0.0. You entered %.1f.",arg_name, arg);
+        exit(EXIT_FAILURE);
+    }
+}
+
+static inline void check_pos_iarg(int64_t arg, char *arg_name){
+    if(arg < 1){
+        ERROR("%s should be larger than 0. You entered %ld.",arg_name, arg);
+        exit(EXIT_FAILURE);
+    }
+}
+
+static void check_args(opt_gvn_t opt_gvn, int8_t rna, opt_t opt, char *paf) {
+    //-n incompatible with --full-contigs
+    if(opt_gvn.n && opt_gvn.full_contigs){
+        WARNING("%s","Option -n is ignored when --full-contigs is set");
+    }
+    //-r incompatible with --full-contigs
+    if(opt_gvn.r && opt_gvn.full_contigs){
+        WARNING("%s","Option -r is ignored when --full-contigs is set");
+    }
+    //-f incompatible with --full-contigs
+    if(opt_gvn.f && opt_gvn.full_contigs){
+        WARNING("%s","Option -f is ignored when --full-contigs is set");
+    }
+    if (rna && opt_gvn.r){
+        WARNING("%s","Option -r is ignored for RNA. Complete transcripts are simulated.");
+    }
+    if (opt.flag & SQ_PAF_REF && paf==NULL){
+        WARNING("%s","Option --paf-ref is ineffective without -c.");
+    }
+    if (opt_gvn.f && opt_gvn.n){
+        WARNING("%s","Option -n is ignored when -f is set");
+    }
+    if (opt_gvn.dwell_mean && opt_gvn.bps){
+        WARNING("%s","Option --dwell-mean is ignored when --bps is provided");
+    }
+
+}
+
+static void print_model_stat(profile_t p){
+    VERBOSE("digitisation: %.1f; sample_rate: %.1f; range: %.1f; offset_mean: %.1f; offset_std: %.1f; dwell_mean: %.1f; dwell_std: %.1f",
+        p.digitisation,p.sample_rate,p.range,p.offset_mean,p.offset_std,p.dwell_mean,p.dwell_std);
+}
 
 int sim_main(int argc, char* argv[], double realtime0) {
 
-    const char* optstring = "o:hVn:q:r:x:v:K:t:c:a:";
+    const char* optstring = "o:hVn:q:r:x:v:K:t:c:a:f:";
 
     int longindex = 0;
     int32_t c = -1;
@@ -1258,11 +1408,11 @@ int sim_main(int argc, char* argv[], double realtime0) {
     profile_t p = prom_r9_dna_prof;
 
     int64_t nreads = 4000;
+    int64_t coverage = -1;
+    int bps=-1;
 
-    int8_t opt_n_gvn = 0;
-    int8_t opt_r_gvn = 0;
-    int8_t opt_full_contigs_gvn = 0;
-
+    opt_gvn_t opt_gvn = {0};
+    int8_t x_gvn = 0;
 
     //parse the user args
     while ((c = getopt_long(argc, argv, optstring, long_options, &longindex)) >= 0) {
@@ -1276,41 +1426,44 @@ int sim_main(int argc, char* argv[], double realtime0) {
             fp_help = stdout;
         } else if (c=='x'){
             p = set_profile(optarg, &opt);
+            if(x_gvn){
+                WARNING("%s","Providing -x multiple times may lead to unspecified behaviour.")
+            }
+            x_gvn = 1;
         } else if(c == 'o'){
             output_file=optarg;
         } else if (c == 0 && longindex == 4){   //generate ideal signal
             opt.flag |= SQ_IDEAL;
         } else if (c == 0 && longindex == 5){  //generate signal for complete contigs
             opt.flag |= SQ_FULL_CONTIG;
-            opt_full_contigs_gvn = 1;
+            opt_gvn.full_contigs = 1;
         } else if (c == 'n'){
             nreads = atoi(optarg);
-            opt_n_gvn = 1;
+            opt_gvn.n = 1;
+            check_pos_iarg(nreads,"Number of reads");
         } else if (c == 'q'){
             fasta = optarg;
         } else if (c == 'r'){
             opt.rlen = atoi(optarg);
-            opt_r_gvn = 1;
+            opt_gvn.r = 1;
             if(opt.rlen < 200){
                 WARNING("Read length %d is too short. Set to minimum length 200. Open an issue if you want short reads.",opt.rlen);
                 opt.rlen = 200;
             }
         } else if (c == 'K') {
             opt.batch_size = atoi(optarg);
-            if (opt.batch_size < 1) {
-                ERROR("Batch size should larger than 0. You entered %d",opt.batch_size);
-                exit(EXIT_FAILURE);
-            }
+            check_pos_iarg(opt.batch_size, "Batch size");
         } else if (c == 't') {
             opt.num_thread = atoi(optarg);
-            if (opt.num_thread < 1) {
-                ERROR("Number of threads should larger than 0. You entered %d", opt.num_thread);
-                exit(EXIT_FAILURE);
-            }
+            check_pos_iarg(opt.num_thread, "Number of threads");
         } else if (c == 'c'){
             paf = optarg;
         } else if (c == 'a'){
             sam = optarg;
+        } else if (c == 'f'){
+            opt_gvn.f = 1;
+            coverage = atoi(optarg);
+            check_pos_iarg(coverage,"Coverage");
         } else if (c == 0 && longindex == 9){  //seed
             opt.seed = atoi(optarg);
         } else if (c == 0 && longindex == 10){ //ideal-time
@@ -1318,73 +1471,52 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if (c == 0 && longindex == 11){ //ideal-amp
             opt.flag |= SQ_IDEAL_AMP;
         } else if (c == 0 && longindex == 12){ //dwell-mean
+            opt_gvn.dwell_mean = 1;
             p.dwell_mean = atof(optarg);
+            check_pos_farg(p.dwell_mean, "--dwell-mean");
         } else if (c == 0 && longindex == 14) { //custom nucleotide model file
             opt.model_file = optarg;
         } else if (c == 0 && longindex == 15) { //prefix
             yes_or_no(&opt, SQ_PREFIX, longindex, optarg, 1);
         } else if (c == 0 && longindex == 16) { //dwell-std
             p.dwell_std = atof(optarg);
+            check_noneg_farg(p.dwell_std, "--dwell-std");
         } else if (c == 0 && longindex == 20) { //amp-noise
             opt.amp_noise = atof(optarg);
+            check_noneg_farg(opt.amp_noise, "--amp-noise");
         } else if (c == 0 && longindex == 21) { //paf-ref
             opt.flag |= SQ_PAF_REF;
+        } else if (c == 0 && longindex == 24) { //digitisation
+            p.digitisation = atof(optarg);
+            check_pos_farg(p.digitisation, "--digitisation"); //must in theory check if power of two
+        } else if (c == 0 && longindex == 25) { //sample_rate
+            p.sample_rate = atof(optarg);
+            check_pos_farg(p.sample_rate, "--sample-rate");
+        } else if (c == 0 && longindex == 26) { //range
+            p.range = atof(optarg);
+        } else if (c == 0 && longindex == 27) { //offset_mean
+            p.offset_mean = atof(optarg);
+        } else if (c == 0 && longindex == 28) { //offset_std
+            p.offset_std = atof(optarg);
+        } else if (c == 0 && longindex == 29) { //bases per second
+            bps = atoi(optarg);
+            opt_gvn.bps = 1;
+            check_pos_iarg(bps,"Bases per second");
+        } else if (c == '?'){
+            exit(EXIT_FAILURE);
+        } else {
+            exit(EXIT_FAILURE);
         }
     }
 
-    if (argc-optind<1 || output_file==NULL ||  fp_help == stdout) {
-        fprintf(fp_help,"Usage: squigulator [OPTIONS] ref.fa -o out_signal.blow5\n");
-        fprintf(fp_help,"\nbasic options:\n");
-        fprintf(fp_help,"   -o FILE                    SLOW5/BLOW5 file to write\n");
-        fprintf(fp_help,"   -x STR                     parameter profile (always applied before other options) [dna-r9-prom]\n");
-        fprintf(fp_help,"                              e.g., dna-r9-min, dna-r9-prom, rna-r9-min, rna-r9-prom, dna-r10-min, dna-r10-prom\n");
-        fprintf(fp_help,"   -n INT                     Number of reads to simulate [%ld]\n", nreads);
-        fprintf(fp_help,"   -q FILE                    FASTA file to write simulated reads with no errors\n");
-        fprintf(fp_help,"   -c FILE                    PAF file to write the alignment of simulated reads\n");
-        fprintf(fp_help,"   -a FILE                    SAM file to write the alignment of simulated reads\n");
-        fprintf(fp_help,"   -r INT                     Mean read length (estimate only, unused for direct RNA) [%d]\n",opt.rlen);
-        fprintf(fp_help,"   -t INT                     number of threads [%d]\n",opt.num_thread);
-        fprintf(fp_help,"   -K INT                     batch size (max number of reads created at once) [%d]\n",opt.batch_size);
-
-        fprintf(fp_help,"   -h                         help\n");
-        fprintf(fp_help,"   --ideal                    Generate ideal signals with no noise\n");
-        fprintf(fp_help,"   --version                  print version\n");
-        fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",(int)get_log_level());
-
-        fprintf(fp_help,"\nadvanced options:\n");
-        fprintf(fp_help,"   --full-contigs             Generate signals for complete contigs (incompatible with -n and -r)\n");
-        fprintf(fp_help,"   --prefix=yes|no            generate prefixes such as adaptor (and polya for RNA) [no]\n");
-        fprintf(fp_help,"   --kmer-model FILE          custom nucleotide k-mer model file (format similar to https://github.com/hasindu2008/f5c/blob/master/test/r9-models/r9.4_450bps.nucleotide.6mer.template.model)\n");
-        fprintf(fp_help,"   --seed INT                 Seed or random generators (if 0, will be autogenerated) [%ld]\n",opt.seed);
-        fprintf(fp_help,"   --ideal-time               Generate signals with no time domain noise\n");
-        fprintf(fp_help,"   --ideal-amp                Generate signals with no amplitiude domain noise\n");
-        fprintf(fp_help,"   --dwell-mean FLOAT         Mean of number of signal samples per base [%f]\n",p.dwell_mean);
-        fprintf(fp_help,"   --dwell-std FLOAT          standard deveation of number of signal samples per base [%f]\n",p.dwell_std);
-        fprintf(fp_help,"   --amp-noise FLOAT          amplitude domain noise factor [%f]\n",opt.amp_noise);
-        fprintf(fp_help,"   --paf-ref                  in paf output, use the reference as the target instead of read (needs -c)\n");
-        if(fp_help == stdout){
-            exit(EXIT_SUCCESS);
-        }
-        exit(EXIT_FAILURE);
+    if (argc-optind<1 || argc-optind> 1 || output_file==NULL ||  fp_help == stdout) {
+        print_help(fp_help, opt, p, nreads);
     }
 
     int8_t rna = opt.flag & SQ_RNA ? 1 : 0;
 
     //check args
-    //-n incompatible with --full-contigs
-    if(opt_n_gvn && opt_full_contigs_gvn){
-        WARNING("%s","Option -n is ignored when --full-contigs is set");
-    }
-    //-r incompatible with --full-contigs
-    if(opt_r_gvn && opt_full_contigs_gvn){
-        WARNING("%s","Option -r is ignored when --full-contigs is set");
-    }
-    if (rna && opt_r_gvn){
-        WARNING("%s","Option -r is ignored for RNA. Complete transcripts are simulated.");
-    }
-    if (opt.flag & SQ_PAF_REF && paf==NULL){
-        WARNING("%s","Option --paf-ref is ineffective with out -c.");
-    }
+    check_args(opt_gvn, rna, opt, paf);
 
     if (opt.seed == 0){
         opt.seed = realtime0;
@@ -1394,12 +1526,28 @@ int sim_main(int argc, char* argv[], double realtime0) {
     char *refname = argv[optind];
 
     int64_t n = nreads;
+    if(bps>0){
+        p.dwell_mean = p.sample_rate / bps;
+        VERBOSE("bps=%d,sample_rate=%f,set dwell_mean=digitisation/bps=%f",bps,p.sample_rate,p.dwell_mean);
+    }
 
     core_t *core = init_core(opt, p, refname, output_file, fasta, paf, sam);
 
     if(opt.flag & SQ_FULL_CONTIG){
         n = core->ref->num_ref;
+    } else {
+        if (coverage > 0) {
+            if(rna){
+                n = (int64_t) (core->ref->num_ref * coverage);
+                VERBOSE("rna mode: %ld reads will be simulated for each transcript. ntranscripts=%d, total reads %ld",coverage,core->ref->num_ref,n);
+            } else {
+                n = (int64_t) (core->ref->sum * coverage / opt.rlen);
+                VERBOSE("dna mode: %ld reads of mean length %d will be simulated to achive requested %ldX coverage for the %ld base genome",n,opt.rlen,coverage,core->ref->sum);
+            }
+        }
     }
+
+    print_model_stat(core->profile);
 
     int64_t done = 0;
     while(done < n){

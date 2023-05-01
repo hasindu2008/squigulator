@@ -62,6 +62,17 @@ jobs:
       run: make clean && make CC=clang -j8
     - name: test-clang
       run: make test
+  ubuntu_22:
+    name: Ubuntu 22
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: install packages
+      run: sudo apt-get update && sudo apt-get install zlib1g-dev
+    - name: build
+      run: make -j8
+    - name: test
+      run: make test
   ubuntu_20_icc:
     name: Ubuntu 20 icc
     runs-on: ubuntu-20.04

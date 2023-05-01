@@ -2,7 +2,7 @@
 
 *squigulator* is a tool for simulating nanopore raw signal data. It is under development and there could be interface changes and changes to default parameters. Do not hesitate to open an [issue](https://github.com/hasindu2008/squigulator) if you found a bug, something is not clear or for any feature requests.
 
-*squigulator* uses traditional pore models and gaussian noise for simulation. Due to simplicity, simulation would not be perfect, but takes miniscule effort to setup and run. Generating 4000 reads from human genome using *squigulator* takes ~30 seconds with ~3 GB of RAM.
+*squigulator* uses traditional pore models and gaussian noise for simulation. Due to simplicity, simulation would not be perfect, but takes miniscule effort to setup and run. Generating 100,000 reads (~1 Gbases) from human genome using *squigulator* takes ~5 minutes with ~3 GB of RAM (8 CPU threads).
 
 Reads directly extracted from the reference genome are simulated without any mutations/variants. If you want to have variants in your simulated data, you can first apply a set of variants to the reference using [bcftools](http://www.htslib.org/download/) and use that as the input to the *squigulator*.
 
@@ -10,7 +10,9 @@ Reads directly extracted from the reference genome are simulated without any mut
 
 ## Background story
 
-*squigulator* started as *ssssim* (Stupidly Simple Signal Simulator). For an experiment, [kisarur](https://github.com/kisarur) wanted some simulated data. After [hiruna72](https://github.com/hiruna72) trying ~3 days to get an existing simulator installed (dependency and compatibility issues), I thought that writing a simple tool from scratch is easier (Indeed, when writing BLOW5 files, not over complicated formats like FAST5 or POD5 that would consume months -- would not think about writing a simulator in the first place then.) After getting the basic *ssssim* implemented in ~8 hours and successfully basecalling using buttery-eel, I realised that it has worked much better than anticipated. Then, I decided to extend it with different features and options. The result is *sigsim* which was eventually named as *squigulator*, a cool name suggested by [IraDeveson](https://github.com/IraDeveson).
+*squigulator* started as *ssssim* (Stupidly Simple Signal Simulator). For an experiment, [kisarur](https://github.com/kisarur) wanted some simulated data. After [hiruna72](https://github.com/hiruna72) trying ~3 days to get an existing simulator installed (dependency and compatibility issues), I thought that writing a simple tool from scratch is easier. Indeed, that is when writing BLOW5 files. Writing over complicated formats like FAST5 or POD5 would consume months and I would not think about writing a simulator in the first place then.
+
+After getting the basic *ssssim* implemented in ~8 hours and successfully basecalling using [buttery-eel](https://github.com/Psy-Fer/buttery-eel), I realised that it has worked much better than anticipated. Then, I decided to extend it with different features and options. The result is *sigsim* which was eventually named as *squigulator*, a cool name suggested by [IraDeveson](https://github.com/IraDeveson).
 
 ## Installation
 
@@ -46,7 +48,7 @@ The simplest command to generate reads:
 squigulator [OPTIONS] ref_genome.fa -o out_signal.blow5 -n NUM_READS
 ```
 
-By default, DNA PromethION reads (R9.4.1) will be simulated. Specify the `-x STR` option to set a different profile from the following available pre-sets (inspired by pre-sets in *Minimap2*).
+By default, DNA PromethION reads (R9.4.1) will be simulated. Specify the `-x STR` option to set a different profile from the following available pre-sets (inspired by pre-sets in [Minimap2](https://github.com/lh3/minimap2)).
 - `dna-r9-min`: genomic DNA on MinION R9.4.1 flowcells
 - `dna-r9-prom`: genomic DNA on PromethION R9.4.1 flowcells
 - `rna-r9-min`: direct RNA on MinION R9.4.1 flowcells
@@ -54,11 +56,11 @@ By default, DNA PromethION reads (R9.4.1) will be simulated. Specify the `-x STR
 - `dna-r10-min`: genomic DNA on MinION R10.4.1 flowcells
 - `dna-r10-prom`: genomic DNA on PromethION R10.4.1 flowcells
 
-If a genomic DNA profile is selected, the input reference must be the reference genome in *FASTA* format. *squigulator* will randomly sample the genome from a uniform distribution and generate reads whose lengths are from a gamma distribution (based on `-r`). If a direct RNA profile is selected, the input reference must be the transcriptome is *FASTA* format. For RNA, *squigulator* will randomly pick transcripts from a uniform distribution and the whole transcript length is simulated.
+If a genomic DNA profile is selected, the input reference must be the **reference genome in *FASTA* format**. *squigulator* will randomly sample the genome from a uniform distribution and generate reads whose lengths are from a gamma distribution (based on `-r`). If a direct RNA profile is selected, the input reference must be the **transcriptome in *FASTA* format**. For RNA, *squigulator* will randomly pick transcripts from a uniform distribution and the whole transcript length is simulated.
 
-You can basecall the generated raw signal directly from the [BLOW format](https://www.nature.com/articles/s41587-021-01147-4) using the SLOW5 Guppy wrapper called [buttery-eel](https://github.com/Psy-Fer/buttery-eel) or our fork of [dorado basecaller](https://github.com/hiruna72/dorado/releases/tag/v0.0.1).  Alternatively, if you love FAST5 that much, use [slow5tools](https://github.com/hasindu2008/slow5tools) to convert the BLOW5 to FAST5 and then use original Guppy basecaller.
+You can basecall the generated raw signal directly from the [BLOW5 format](https://www.nature.com/articles/s41587-021-01147-4) using the SLOW5 Guppy wrapper called [buttery-eel](https://github.com/Psy-Fer/buttery-eel) or our fork of [dorado basecaller](https://github.com/hiruna72/dorado/releases/tag/v0.0.1).  Alternatively, if you love FAST5 that much, use [slow5tools](https://github.com/hasindu2008/slow5tools) to convert the BLOW5 to FAST5 and then use original Guppy basecaller.
 
-Generated read IDs encodes the true mapping positions in a format like `S1_33!chr1!225258409!225267761!-`, which is compatible with [*mapeval* command in *paftools.js* under Minimap2 repository](https://github.com/lh3/minimap2/blob/master/misc/README.md#evaluation).
+Generated read IDs encode the true mapping positions in a format like `S1_33!chr1!225258409!225267761!-`, which is compatible with [*mapeval* command in *paftools.js* under Minimap2 repository](https://github.com/lh3/minimap2/blob/master/misc/README.md#evaluation).
 
 Visit the [manual page](docs/man.md) for details of each and every option.
 
@@ -88,7 +90,7 @@ RNA examples:
 # generate 4000 PromethION direct RNA reads from a transcriptome while including the adaptor and polyA tail
 squigulator gencode.v40.transcripts.fa -x rna-r9-prom -o reads.blow5 -n 4000 --prefix
 
-# simulate signals for basecalled reads (each complete read will be simulated; not memory optimised yet, will load the while basecalled.fq to memory first)
+# simulate signals for basecalled reads (each complete read will be simulated; not memory optimised yet, will load the whole basecalled.fq to memory first)
 squigulator basecalled.fq -x dna-r9-prom -o reads.blow5 --full-contigs
 ```
 

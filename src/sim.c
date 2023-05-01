@@ -396,7 +396,7 @@ static ref_t *load_ref(const char *genome){
         ref->sum += l;
         i++;
 
-        if(large_warn && ref->sum > 20000000){
+        if(large_warn && ref->sum > 20000000000){
             WARNING("%s","The input FASTA/FASTQ file seems >20 Gbases. You are seeing this warning because part by part loading is not implemented. If you input file is larger than available RAM, terminate the programme and open an issue on github. The feature will then be implemented as soon as possible.");
             large_warn = 0;
         }
@@ -407,6 +407,8 @@ static ref_t *load_ref(const char *genome){
 
     kseq_destroy(seq);
     gzclose(fp);
+
+    VERBOSE("Loaded %d reference sequences with total length %f Mbases",ref->num_ref,ref->sum/1000000.0);
 
     return ref;
 

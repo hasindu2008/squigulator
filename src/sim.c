@@ -739,7 +739,6 @@ void free_db(db_t* db) {
         free(db->sam);
     }
 
-
     free(db);
 }
 
@@ -786,7 +785,6 @@ static void set_record_aux_fields(slow5_rec_t *slow5_record, slow5_file_t *sp, d
         ERROR("%s","Error setting start_time auxilliary field\n");
         exit(EXIT_FAILURE);
     }
-
 
 }
 
@@ -999,6 +997,9 @@ static inline int32_t is_bad_read(char *seq, int32_t len){
     if (len < 200){
         return -1;
     }
+    if (len >= UINT32_MAX){
+        return -2;
+    }
     int64_t r = 100;
     int nc = 0;
     for (int i=0; i<len; i++){
@@ -1051,12 +1052,15 @@ char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, in
            break;
         } else {
             if(nc == -1) {
-                LOG_TRACE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
+                LOG_TRACE("Too short read: <%d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
                 if(short_warn==0 && ref->ref_lengths[seq_i]<200){
                     WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
                     short_warn = 1;
                 }
-            } else{
+            }else if (nc == -2){
+                WARNING("Too long read: >=%d. %s:%d-%d. Trying again!",UINT32_MAX,*ref_id,*ref_pos,*ref_pos+*rlen);
+            }
+            else{
                 LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
             }
             free(seq);
@@ -1101,12 +1105,15 @@ char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, in
            break;
         } else {
             if(nc == -1) {
-                LOG_TRACE("Too short read: %d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
+                LOG_TRACE("Too short read: <%d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
                 if(short_warn ==0 && ref->ref_lengths[seq_i]<200){
                     WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
                     short_warn = 1;
                 }
-            } else{
+            } else if (nc == -2){
+                WARNING("Too long read: >=%d. %s:%d-%d. Trying again!",UINT32_MAX,*ref_id,*ref_pos,*ref_pos+*rlen);
+            }
+            else{
                 LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
             }
             free(seq);
@@ -1165,6 +1172,10 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
     }
     int16_t *raw_signal=gen_sig(core, seq, rlen, &offset, &median_before, &len_raw_signal, rna, tid, aln);
     assert(raw_signal != NULL && len_raw_signal > 0);
+    if(len_raw_signal >= UINT32_MAX){
+        ERROR("Read %s:%d-%d has too many samples: %ld. Double check parameters.",rid,ref_pos_st,ref_pos_end,len_raw_signal);
+        exit(EXIT_FAILURE);
+    }
 
     char *read_id= (char *)malloc(sizeof(char)*(10000));
     MALLOC_CHK(read_id);
@@ -1321,6 +1332,12 @@ static inline void check_noneg_farg(float arg, char *arg_name){
         exit(EXIT_FAILURE);
     }
 }
+static inline void check_pos_farg(float arg, char *arg_name){
+    if(arg < 1){
+        ERROR("%s should be larger than 0.0. You entered %.1f.",arg_name, arg);
+        exit(EXIT_FAILURE);
+    }
+}
 
 static inline void check_pos_iarg(int64_t arg, char *arg_name){
     if(arg < 1){
@@ -1385,6 +1402,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
     int bps=-1;
 
     opt_gvn_t opt_gvn = {0};
+    int8_t x_gvn = 0;
 
     //parse the user args
     while ((c = getopt_long(argc, argv, optstring, long_options, &longindex)) >= 0) {
@@ -1398,6 +1416,10 @@ int sim_main(int argc, char* argv[], double realtime0) {
             fp_help = stdout;
         } else if (c=='x'){
             p = set_profile(optarg, &opt);
+            if(x_gvn){
+                WARNING("%s","Providing -x multiple times may lead to unspecified behaviour.")
+            }
+            x_gvn = 1;
         } else if(c == 'o'){
             output_file=optarg;
         } else if (c == 0 && longindex == 4){   //generate ideal signal
@@ -1441,7 +1463,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if (c == 0 && longindex == 12){ //dwell-mean
             opt_gvn.dwell_mean = 1;
             p.dwell_mean = atof(optarg);
-            check_noneg_farg(p.dwell_mean, "--dwell-mean");
+            check_pos_farg(p.dwell_mean, "--dwell-mean");
         } else if (c == 0 && longindex == 14) { //custom nucleotide model file
             opt.model_file = optarg;
         } else if (c == 0 && longindex == 15) { //prefix
@@ -1456,8 +1478,10 @@ int sim_main(int argc, char* argv[], double realtime0) {
             opt.flag |= SQ_PAF_REF;
         } else if (c == 0 && longindex == 24) { //digitisation
             p.digitisation = atof(optarg);
+            check_pos_farg(p.digitisation, "--digitisation"); //must in theory check if power of two
         } else if (c == 0 && longindex == 25) { //sample_rate
             p.sample_rate = atof(optarg);
+            check_pos_farg(p.sample_rate, "--sample-rate");
         } else if (c == 0 && longindex == 26) { //range
             p.range = atof(optarg);
         } else if (c == 0 && longindex == 27) { //offset_mean

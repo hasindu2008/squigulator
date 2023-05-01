@@ -361,7 +361,6 @@ static ref_t *load_ref(const char *genome){
     seq = kseq_init(fp);
     MALLOC_CHK(seq);
 
-
     ref_t *ref = (ref_t *) malloc(sizeof(ref_t));
     MALLOC_CHK(ref);
 
@@ -374,6 +373,7 @@ static ref_t *load_ref(const char *genome){
     MALLOC_CHK(ref->ref_seq);
     ref->sum = 0;
 
+    int8_t large_warn = 1;
     int i = 0;
     while ((l = kseq_read(seq)) >= 0) {
         assert(l==(int)strlen(seq->seq.s));
@@ -395,6 +395,11 @@ static ref_t *load_ref(const char *genome){
 
         ref->sum += l;
         i++;
+
+        if(large_warn && ref->sum > 20000000){
+            WARNING("%s","The input FASTA/FASTQ file seems >20 Gbases. You are seeing this warning because part by part loading is not implemented. If you input file is larger than available RAM, terminate the programme and open an issue on github. The feature will then be implemented as soon as possible.");
+            large_warn = 0;
+        }
 
     }
 

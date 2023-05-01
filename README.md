@@ -2,7 +2,7 @@
 
 *squigulator* is a tool for simulating nanopore raw signal data. It is under development and there could be interface changes and changes to default parameters. Do not hesitate to open an [issue](https://github.com/hasindu2008/squigulator) if you found a bug, something is not clear or for any feature requests.
 
-*squigulator* uses traditional pore models and gaussian noise for simulation. Due to simplicity, simulation would not be perfect, but takes miniscule effort to setup and run. Generating 100,000 reads (~1 Gbases) from human genome using *squigulator* takes ~5 minutes with ~3 GB of RAM (8 CPU threads).
+*squigulator* uses traditional pore models and gaussian noise for simulation. Due to simplicity, simulation would not be perfect, but takes miniscule effort to setup and run. Generating 100,000 reads (~1 Gbases) from human genome using *squigulator* takes ~5 minutes with ~3 GB of RAM (8 CPU threads). For ~30X from the human genome (~9M reads, ~90Gbases) with 32 CPU threads, *squigulator* takes ~1 hour.
 
 Reads directly extracted from the reference genome are simulated without any mutations/variants. If you want to have variants in your simulated data, you can first apply a set of variants to the reference using [bcftools](http://www.htslib.org/download/) and use that as the input to the *squigulator*.
 

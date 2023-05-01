@@ -1170,6 +1170,9 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         seq=gen_read(core, ref, &rid, &ref_len, &ref_pos_st, &rlen, &strand, rna, tid);
         ref_pos_end = ref_pos_st+rlen;
     }
+    if(rlen*core->profile.dwell_mean >= UINT32_MAX ){
+        WARNING("Read %s:%d-%d length*dwell_mean is too large: %ld. Double check parameters. May go out of memory.",rid,ref_pos_st,ref_pos_end,(int64_t)(rlen*core->profile.dwell_mean));
+    }
     int16_t *raw_signal=gen_sig(core, seq, rlen, &offset, &median_before, &len_raw_signal, rna, tid, aln);
     assert(raw_signal != NULL && len_raw_signal > 0);
     if(len_raw_signal >= UINT32_MAX){

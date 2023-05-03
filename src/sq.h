@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include "slow5/slow5.h"
 
-#define SQ_VERSION "0.1.0-dirty"
+#define SQ_VERSION "0.2.0"
 
 //model types
 #define MODEL_TYPE_NUCLEOTIDE 1

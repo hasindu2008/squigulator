@@ -8,6 +8,10 @@ Reads directly extracted from the reference genome are simulated without any mut
 
 ![squigulator](docs/img/example.svg)
 
+[![GitHub Downloads](https://img.shields.io/github/downloads/hasindu2008/squigulator/total?logo=GitHub)](https://github.com/hasindu2008/squigulator/releases)
+[![BioConda Install](https://img.shields.io/conda/dn/bioconda/squigulator?label=BioConda)](https://anaconda.org/bioconda/squigulator)
+[![x86_64](https://github.com/hasindu2008/squigulator/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/hasindu2008/squigulator/actions/workflows/c-cpp.yml)
+
 ## Background story
 
 *squigulator* started as *ssssim* (Stupidly Simple Signal Simulator). For an experiment, [kisarur](https://github.com/kisarur) wanted some simulated data. After [hiruna72](https://github.com/hiruna72) trying ~3 days to get an existing simulator installed (dependency and compatibility issues), I thought that writing a simple tool from scratch is easier. Indeed, that is when writing BLOW5 files. Writing over complicated formats like FAST5 or POD5 would consume months and I would not think about writing a simulator in the first place then.
@@ -19,7 +23,7 @@ After getting the basic *ssssim* implemented in ~8 hours and successfully baseca
 For x86-64 Linux, you can use the precompiled binaries under [releases](https://github.com/hasindu2008/squigulator/releases):
 
 ```
-VERSION=0.2.0
+VERSION=0.2.0-dirty
 wget https://github.com/hasindu2008/squigulator/releases/download/v${VERSION}/squigulator-v${VERSION}-x86_64-linux-binaries.tar.gz
 tar xf squigulator-v${VERSION}-x86_64-linux-binaries.tar.gz  && cd squigulator-v${VERSION}
 ./squigulator --help

@@ -64,7 +64,7 @@ If a genomic DNA profile is selected, the input reference must be the **referenc
 
 You can basecall the generated raw signal directly from the [BLOW5 format](https://www.nature.com/articles/s41587-021-01147-4) using the SLOW5 Guppy wrapper called [buttery-eel](https://github.com/Psy-Fer/buttery-eel) or our fork of [dorado basecaller](https://github.com/hiruna72/dorado/releases/tag/v0.0.1).  Alternatively, if you love FAST5 that much, use [slow5tools](https://github.com/hasindu2008/slow5tools) to convert the BLOW5 to FAST5 and then use original Guppy basecaller.
 
-Generated read IDs encode the true mapping positions in a format like `S1_33!chr1!225258409!225267761!-`, which is compatible with [*mapeval* command in *paftools.js* under Minimap2 repository](https://github.com/lh3/minimap2/blob/master/misc/README.md#evaluation).
+Generated read IDs encode the true mapping positions in a format like `S1_33!chr1!225258409!225267761!-`, which is compatible with [*mapeval* command in *paftools.js* under Minimap2 repository](https://github.com/lh3/minimap2/blob/master/misc/README.md#evaluation). Mapping positions are 0-based (BED like) coordinates.
 
 Visit the [manual page](docs/man.md) for details of each and every option.
 

@@ -105,9 +105,12 @@ typedef struct {
     int64_t t_st;
     int64_t t_end;
 
+    int64_t si_st_ref; //for sam
+    int64_t si_end_ref;
     int32_t *ss;
     int64_t ss_n;
     int64_t ss_c;
+
 
     int64_t prefix_end;
 } aln_t;
@@ -186,7 +189,7 @@ char *sam_str(aln_t *aln, char *seq, char *rname, int32_t ref_pos_st) {
     }
     sprintf_append(sp, "\t%c\t",'*'); //seq, qual
 
-    sprintf_append(sp, "si:Z:%ld,%ld,%ld,%ld\t",(long)aln->sig_start, (long)aln->sig_end, (long)aln->t_st, (long)aln->t_end);
+    sprintf_append(sp, "si:Z:%ld,%ld,%ld,%ld\t",(long)aln->sig_start, (long)aln->sig_end, (long)aln->si_st_ref, (long)aln->si_end_ref);
     sprintf_append(sp, "ss:Z:");
 
     int8_t rna = aln->t_st > aln->t_end ? 1 : 0;
@@ -1202,11 +1205,13 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         aln->len_raw_signal = len_raw_signal;
 
         aln->strand = strand;
+        aln->si_st_ref = rna ? ref_pos_end - core->kmer_size+1 : ref_pos_st;
+        aln->si_end_ref = rna ? ref_pos_st : ref_pos_end - core->kmer_size+1;
         if(core->opt.flag & SQ_PAF_REF){
             aln->tid = rid;
             aln->tlen = !(opt.flag & SQ_FULL_CONTIG) ?  ref_len - core->kmer_size+1: n_kmer;
-            aln->t_st = rna ? ref_pos_end - core->kmer_size+1 : ref_pos_st;
-            aln->t_end = rna ? ref_pos_st : ref_pos_end - core->kmer_size+1;
+            aln->t_st = aln->si_st_ref;
+            aln->t_end = aln->si_end_ref;
         } else {
             aln->tid = read_id;
             aln->tlen = n_kmer;

@@ -56,6 +56,35 @@ distclean: clean
 	git clean -f -X
 	rm -rf $(BUILD_DIR)/* autom4te.cache
 
+release: distclean
+# make the release
+	mkdir -p squigulator-$(VERSION)
+	mkdir -p squigulator-$(VERSION)/scripts squigulator-$(VERSION)/docs squigulator-$(VERSION)/slow5lib
+	cp -r README.md LICENSE Makefile build src squigulator-$(VERSION)
+	cp -r docs/man.md docs/output.md squigulator-$(VERSION)/docs/
+	cp -r slow5lib/lib slow5lib/include slow5lib/src  slow5lib/Makefile slow5lib/LICENSE slow5lib/thirdparty/ squigulator-$(VERSION)/slow5lib
+	tar -zcf squigulator-$(VERSION)-release.tar.gz squigulator-$(VERSION)
+	rm -rf squigulator-$(VERSION)
+# make the binaries
+	make -j8
+	mkdir -p squigulator-$(VERSION)
+	mkdir squigulator-$(VERSION)/docs squigulator-$(VERSION)/scripts
+	mv squigulator squigulator-$(VERSION)/
+	cp -r README.md LICENSE squigulator-$(VERSION)/
+	cp -r docs/man.md docs/output.md squigulator-$(VERSION)/docs/
+	tar -zcf squigulator-$(VERSION)-x86_64-linux-binaries.tar.gz squigulator-$(VERSION)
+	rm -rf squigulator-$(VERSION)
+	tar xf squigulator-$(VERSION)-x86_64-linux-binaries.tar.gz
+	mv squigulator-$(VERSION)/squigulator squigulator
+	scripts/test.sh
+
+install: $(BINARY)
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	cp -f $(BINARY) $(DESTDIR)$(PREFIX)/bin
+
+uninstall:
+	rm -f $(DESTDIR)$(PREFIX)/bin/$(BINARY)
+
 test: $(BINARY)
 	scripts/test.sh
 

@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "error.h"
 
 
 //todo : can make more efficient using bit encoding
@@ -69,10 +70,12 @@ static inline char complement(char c){
 
 static inline char *reverse_complement(char *f){
     char *r = (char *)malloc(strlen(f) + 1);
-    for(unsigned int i=0; i<strlen(f); i++){
+    MALLOC_CHK(r);
+    unsigned int i=0;
+    for(i=0; i<strlen(f); i++){
         r[i] = complement(f[strlen(f)-i-1]);
     }
-    //TODO: new line forgotten?
+    r[i] = '\0';
     return r;
 }
 

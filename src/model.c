@@ -71,7 +71,7 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
             //fprintf(stderr, "%s\n", buffer);
             char key[1000];
             int32_t val=0;
-            int ret=sscanf(buffer,"%s\t%d",key, &val);
+            int ret=sscanf(buffer,"%999s\t%d",key, &val);
             if(ret==2 && strcmp(key,"#k")==0){
                 if(val<=0){
                     ERROR("k-mer size (#k\t%d) in file %s is invalid.",val,file);
@@ -97,7 +97,7 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
             }
 
             int32_t ret =
-            sscanf(buffer, "%s\t%f\t%f", kmer, &model[num_k].level_mean, &model[num_k].level_stdv);
+            sscanf(buffer, "%12s\t%f\t%f", kmer, &model[num_k].level_mean, &model[num_k].level_stdv);
 
             #ifdef CACHED_LOG
                 model[num_k].level_log_stdv=log(model[num_k].level_stdv);

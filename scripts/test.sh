@@ -77,11 +77,9 @@ diff -q test/dna_r10_paf-ref.exp a.slow5 || die "diff failed"
 diff -q test/dna_r10_paf-ref.paf.exp a.paf || die "diff failed"
 diff -q test/dna_r10_paf-ref.sam.exp a.sam || die "diff failed"
 
-# full contig dna paf
-
-# full  contig rna paf
-
-
-
+# samout only
+ex ./squigulator -x dna-r10-prom -o a.slow5 -n 2 --seed 2 --dwell-std 4.0 -t1 test/nCoV-2019.reference.fasta -c a.paf -a a.sam
+diff -q test/dna_r10_paf-ref.exp a.slow5 || die "diff failed"
+diff -q test/dna_r10_paf-ref.sam.exp a.sam || die "diff failed"
 
 echo "Test passed"

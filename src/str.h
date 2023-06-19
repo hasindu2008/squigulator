@@ -43,7 +43,6 @@ static inline void str_free(kstring_t *s){
 	free(s->s);
 }
 
-
 static inline void str_cat(kstring_t *s, char *t, int t_l){
 	str_enlarge(s,t_l);
 	memcpy(&s->s[s->l], t, t_l);
@@ -51,9 +50,7 @@ static inline void str_cat(kstring_t *s, char *t, int t_l){
 	s->s[s->l] = '\0';
 }
 
-
 static inline void sprintf_append(kstring_t *s, const char *fmt, ... ){
-
 	va_list ap;
 	char buffer[10000];
 
@@ -67,11 +64,9 @@ static inline void sprintf_append(kstring_t *s, const char *fmt, ... ){
 	}
 
 	str_cat(s,buffer,len);
-
 }
 
-static inline void str_copy(kstring_t *s, const char *st, const char *en)
-{
+static inline void str_copy(kstring_t *s, const char *st, const char *en){
 	str_enlarge(s, en - st);
 	memcpy(&s->s[s->l], st, en - st);
 	s->l += en - st;

@@ -23,7 +23,7 @@ After getting the basic *ssssim* implemented in ~8 hours and successfully baseca
 For x86-64 Linux, you can use the precompiled binaries under [releases](https://github.com/hasindu2008/squigulator/releases):
 
 ```
-VERSION=0.2.1
+VERSION=0.2.1-dirty
 wget https://github.com/hasindu2008/squigulator/releases/download/v${VERSION}/squigulator-v${VERSION}-x86_64-linux-binaries.tar.gz
 tar xf squigulator-v${VERSION}-x86_64-linux-binaries.tar.gz  && cd squigulator-v${VERSION}
 ./squigulator --help

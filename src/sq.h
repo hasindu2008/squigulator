@@ -61,7 +61,7 @@ typedef struct{
 typedef struct {
     double digitisation;
     double sample_rate;
-    //double bases_per_second;
+    double bps;
     double range;
     double offset_mean;
     double offset_std;

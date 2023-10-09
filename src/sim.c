@@ -18,73 +18,73 @@ KSEQ_INIT(gzFile, gzread)
 profile_t minion_r9_dna_prof = {
     .digitisation = 8192,
     .sample_rate = 4000,
-    //.bases_per_second = 450,
+    .bps = 450,
     .range = 1443.030273,
     .offset_mean=13.7222605,
     .offset_std=10.25279688,
     .median_before_mean=200.815801,
     .median_before_std=20.48933762,
-    .dwell_mean=9.0, //this must be sample_rate/bases_per_second for now
+    .dwell_mean=9.0, //this must be sample_rate/bps for now
     .dwell_std=4.0
 };
 profile_t prom_r9_dna_prof = {
     .digitisation = 2048,
     .sample_rate = 4000,
-    //.bases_per_second = 450,
+    .bps = 450,
     .range = 748.5801,
     .offset_mean=-237.4102,
     .offset_std=14.1575,
     .median_before_mean=214.2890337,
     .median_before_std=18.0127916,
-    .dwell_mean=9.0, //this must be sample_rate/bases_per_second for now
+    .dwell_mean=9.0, //this must be sample_rate/bps for now
     .dwell_std=4.0
 };
 profile_t minion_r9_rna_prof = {
     .digitisation = 8192,
     .sample_rate = 3012,
-    //.bases_per_second = 70,
+    .bps = 70,
     .range = 1126.47,
     .offset_mean=4.65491888,
     .offset_std=4.115262472,
     .median_before_mean=242.6584118,
     .median_before_std=10.60230888,
-    .dwell_mean=43.0,  //this must be sample_rate/bases_per_second for now
+    .dwell_mean=43.0,  //this must be sample_rate/bps for now
     .dwell_std=35.0
 };
 profile_t prom_r9_rna_prof = {
     .digitisation = 2048,
     .sample_rate = 3000,
-    //.bases_per_second = 70,
+    .bps = 70,
     .range = 548.788269,
     .offset_mean=-231.9440589,
     .offset_std=12.87185278,
     .median_before_mean=238.5286796,
     .median_before_std=21.1871794,
-    .dwell_mean=43.0,  //this must be sample_rate/bases_per_second for now
+    .dwell_mean=43.0,  //this must be sample_rate/bps for now
     .dwell_std=35.0
 };
 profile_t prom_r10_dna_prof = {
     .digitisation = 2048,
     .sample_rate = 4000,
-    //.bases_per_second = 400,
+    .bps = 400,
     .range = 281.345551,
     .offset_mean=-127.5655735,
     .offset_std=19.377283387665,
     .median_before_mean=189.87607393756,
     .median_before_std=15.788097978713,
-    .dwell_mean=10.0, //this must be sample_rate/bases_per_second for now
+    .dwell_mean=10.0, //this must be sample_rate/bps for now
     .dwell_std=4.0
 };
 profile_t minion_r10_dna_prof = {
     .digitisation = 8192,
     .sample_rate = 4000,
-    //.bases_per_second = 400,
+    .bps = 400,
     .range = 1536.598389,
     .offset_mean=13.380569389019,
     .offset_std=16.311471649012,
     .median_before_mean=202.15407438804,
     .median_before_std=13.406139241768,
-    .dwell_mean=10.0, //this must be sample_rate/bases_per_second for now
+    .dwell_mean=10.0, //this must be sample_rate/bps for now
     .dwell_std=4.0
 };
 
@@ -1339,6 +1339,7 @@ typedef struct {
     int8_t f;
     int8_t dwell_mean;
     int8_t bps;
+    int8_t sample_rate;
 } opt_gvn_t;
 
 static inline void check_noneg_farg(float arg, char *arg_name){
@@ -1386,6 +1387,9 @@ static void check_args(opt_gvn_t opt_gvn, int8_t rna, opt_t opt, char *paf) {
     if (opt_gvn.dwell_mean && opt_gvn.bps){
         WARNING("%s","Option --dwell-mean is ignored when --bps is provided");
     }
+    if (opt_gvn.dwell_mean && opt_gvn.sample_rate){
+        WARNING("%s","Option --dwell-mean is ignored when --sample-rate is provided");
+    }
 
 }
 
@@ -1414,7 +1418,6 @@ int sim_main(int argc, char* argv[], double realtime0) {
 
     int64_t nreads = 4000;
     int64_t coverage = -1;
-    int bps=-1;
 
     opt_gvn_t opt_gvn = {0};
     int8_t x_gvn = 0;
@@ -1495,6 +1498,7 @@ int sim_main(int argc, char* argv[], double realtime0) {
             p.digitisation = atof(optarg);
             check_pos_farg(p.digitisation, "--digitisation"); //must in theory check if power of two
         } else if (c == 0 && longindex == 25) { //sample_rate
+            opt_gvn.sample_rate = 1;
             p.sample_rate = atof(optarg);
             check_pos_farg(p.sample_rate, "--sample-rate");
         } else if (c == 0 && longindex == 26) { //range
@@ -1504,9 +1508,9 @@ int sim_main(int argc, char* argv[], double realtime0) {
         } else if (c == 0 && longindex == 28) { //offset_std
             p.offset_std = atof(optarg);
         } else if (c == 0 && longindex == 29) { //bases per second
-            bps = atoi(optarg);
+            p.bps = atof(optarg);
             opt_gvn.bps = 1;
-            check_pos_iarg(bps,"Bases per second");
+            check_pos_iarg(p.bps,"Bases per second");
         } else if (c == '?'){
             exit(EXIT_FAILURE);
         } else {
@@ -1531,9 +1535,12 @@ int sim_main(int argc, char* argv[], double realtime0) {
     char *refname = argv[optind];
 
     int64_t n = nreads;
-    if(bps>0){
-        p.dwell_mean = p.sample_rate / bps;
-        VERBOSE("bps=%d,sample_rate=%f,set dwell_mean=digitisation/bps=%f",bps,p.sample_rate,p.dwell_mean);
+
+    if(opt_gvn.sample_rate || opt_gvn.bps){
+        p.dwell_mean = round(p.sample_rate / p.bps);
+        VERBOSE("bps=%.1f,sample_rate=%.1f,set dwell_mean=digitisation/bps=%.1f",p.bps,p.sample_rate,p.dwell_mean);
+    } else {
+        assert(round(p.sample_rate / p.bps) == (int)(p.dwell_mean));
     }
 
     core_t *core = init_core(opt, p, refname, output_file, fasta, paf, sam);

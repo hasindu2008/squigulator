@@ -91,11 +91,11 @@ profile_t prom_rna004_rna_prof = {
     .digitisation = 2048,
     .sample_rate = 4000,
     .bps = 130,
-    .range = 281.345551,
-    .offset_mean=-127.5655735,
-    .offset_std=19.377283387665,
-    .median_before_mean=189.87607393756,
-    .median_before_std=15.788097978713,
+    .range =  299.432068,
+    .offset_mean=-259.421128,
+    .offset_std=16.010841823643,
+    .median_before_mean=205.63935594369,
+    .median_before_std=8.3994882799157,
     .dwell_mean=31.0, //this must be sample_rate/bps for now
     .dwell_std=4.0
 };
@@ -258,6 +258,8 @@ static struct option long_options[] = {
     {"offset-mean", required_argument, 0, 0 },     //27 offset_mean
     {"offset-std", required_argument, 0, 0 },      //28 offset-std
     {"bps", required_argument, 0, 0 },             //29 bases per second
+    {"median-before-mean", required_argument, 0, 0 },             //30 bases per second
+    {"median-before-std", required_argument, 0, 0 },             //31 bases per second
     {0, 0, 0, 0}};
 
 
@@ -280,6 +282,8 @@ profile_t set_profile(char *prof_name, opt_t *opt){
         opt->flag |= SQ_R10;
         return minion_r10_dna_prof;
     }else if(strcmp(prof_name, "rna004-min") == 0){
+        ERROR("%s","Parameters not determined for rna004 MinION. Please share some data!");
+        exit(EXIT_FAILURE);
         opt->flag |= SQ_R10;
         opt->flag |= SQ_RNA;
         return minion_rna004_rna_prof;
@@ -1368,6 +1372,8 @@ static void print_help(FILE *fp_help, opt_t opt, profile_t p, int64_t nreads) {
     fprintf(fp_help,"   --range FLOAT              ADC range [%.1f]\n",p.range);
     fprintf(fp_help,"   --offset-mean FLOAT        ADC offset mean [%.1f]\n",p.offset_mean);
     fprintf(fp_help,"   --offset-std FLOAT         ADC offset standard deviation [%.1f]\n",p.offset_std);
+    fprintf(fp_help,"   --median-before-mean FLOAT Median before mean [%.1f]\n",p.median_before_mean);
+    fprintf(fp_help,"   --median-before-std FLOAT  Median before standard deviation [%.1f]\n",p.median_before_std);
 
     if(fp_help == stdout){
         exit(EXIT_SUCCESS);
@@ -1555,6 +1561,10 @@ int sim_main(int argc, char* argv[], double realtime0) {
             p.bps = atof(optarg);
             opt_gvn.bps = 1;
             check_pos_iarg(p.bps,"Bases per second");
+        } else if (c == 0 && longindex == 30) { //median before mean
+            p.median_before_mean = atof(optarg);
+        } else if (c == 0 && longindex == 31) { //median before std
+            p.median_before_std = atof(optarg);
         } else if (c == '?'){
             exit(EXIT_FAILURE);
         } else {

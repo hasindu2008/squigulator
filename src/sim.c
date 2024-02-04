@@ -276,9 +276,13 @@ profile_t set_profile(char *prof_name, opt_t *opt){
         opt->flag |= SQ_RNA;
         return prom_r9_rna_prof;
     }else if(strcmp(prof_name, "dna-r10-prom") == 0){
+        INFO("%s", "dna-r10-prom is 5kHz from squigulator v0.3.0 onwards. Specify --sample-rate 4000 for old 4kHz.")
+        WARNING("%s","Parameters and models for dna-r10-prom 5khz are still crude. If you have good modification-free data, please share!");
         opt->flag |= SQ_R10;
         return prom_r10_dna_prof;
     }else if(strcmp(prof_name, "dna-r10-min") == 0){
+        INFO("%s", "dna-r10-min is 5kHz from squigulator v0.3.0 onwards. Specify --sample-rate 4000 for old 4kHz.")
+        WARNING("%s","Parameters and models for dna-r10-min 5khz are still crude. If you have good modification-free data, please share!");
         opt->flag |= SQ_R10;
         return minion_r10_dna_prof;
     }else if(strcmp(prof_name, "rna004-min") == 0){

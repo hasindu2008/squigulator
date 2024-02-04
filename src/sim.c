@@ -1595,9 +1595,14 @@ int sim_main(int argc, char* argv[], double realtime0) {
 
     int64_t n = nreads;
 
+    if(opt_gvn.dwell_mean){
+        p.bps = round(p.sample_rate / p.dwell_mean);
+        VERBOSE("dwell_mean=%.1f,sample_rate=%.1f,set bps=sample_rate/dwell_mean=%.1f",p.dwell_mean, p.sample_rate, p.bps);
+    }
+
     if(opt_gvn.sample_rate || opt_gvn.bps){
         p.dwell_mean = round(p.sample_rate / p.bps);
-        VERBOSE("bps=%.1f,sample_rate=%.1f,set dwell_mean=digitisation/bps=%.1f",p.bps,p.sample_rate,p.dwell_mean);
+        VERBOSE("bps=%.1f,sample_rate=%.1f,set dwell_mean=sample_rate/bps=%.1f",p.bps,p.sample_rate,p.dwell_mean);
     } else {
         assert(round(p.sample_rate / p.bps) == (int)(p.dwell_mean));
     }

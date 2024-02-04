@@ -288,7 +288,7 @@ profile_t set_profile(char *prof_name, opt_t *opt){
         opt->flag |= SQ_RNA;
         return minion_rna004_rna_prof;
     }else if(strcmp(prof_name, "rna004-prom") == 0){
-        WARNING("%s","Parameters and models for rna004-prom are still crude.");
+        WARNING("%s","Parameters and models for rna004-prom are still crude. If you have good IVT data, please share!");
         opt->flag |= SQ_R10;
         opt->flag |= SQ_RNA;
         return prom_rna004_rna_prof;

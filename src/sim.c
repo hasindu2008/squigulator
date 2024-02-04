@@ -65,7 +65,7 @@ profile_t prom_r9_rna_prof = {
 };
 profile_t prom_r10_dna_prof = {
     .digitisation = 2048,
-    .sample_rate = 4000,
+    .sample_rate = 5000,
     .bps = 400,
     .range = 281.345551,
     .offset_mean=-127.5655735,
@@ -77,7 +77,7 @@ profile_t prom_r10_dna_prof = {
 };
 profile_t minion_r10_dna_prof = {
     .digitisation = 8192,
-    .sample_rate = 4000,
+    .sample_rate = 5000,
     .bps = 400,
     .range = 1536.598389,
     .offset_mean=13.380569389019,

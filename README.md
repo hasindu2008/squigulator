@@ -78,6 +78,8 @@ By default, DNA PromethION reads (R9.4.1) will be simulated. Specify the `-x STR
 - `rna-r9-prom`: direct RNA on PromethION R9.4.1 flowcells
 - `dna-r10-min`: genomic DNA on MinION R10.4.1 flowcells
 - `dna-r10-prom`: genomic DNA on PromethION R10.4.1 flowcells
+- `rna004-min`: direct RNA on MinION RNA004 flowcells
+- `rna004-prom`: direct RNA on promethION RNA004 flowcells
 
 If a genomic DNA profile is selected, the input reference must be the **reference genome in *FASTA* format**. *squigulator* will randomly sample the genome from a uniform distribution and generate reads whose lengths are from a gamma distribution (based on `-r`). If a direct RNA profile is selected, the input reference must be the **transcriptome in *FASTA* format**. For RNA, *squigulator* will randomly pick transcripts from a uniform distribution and the whole transcript length is simulated.
 

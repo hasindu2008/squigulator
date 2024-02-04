@@ -22,6 +22,7 @@
 #define MODEL_ID_DNA_R9_NUCLEOTIDE 1
 #define MODEL_ID_RNA_R9_NUCLEOTIDE 2
 #define MODEL_ID_DNA_R10_NUCLEOTIDE 3
+#define MODEL_ID_RNA_RNA004_NUCLEOTIDE 4
 
 /*******************************************************
  * flags related to the user specified options (opt_t) *

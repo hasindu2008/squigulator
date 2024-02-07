@@ -34,7 +34,7 @@ $(BINARY): $(OBJ) slow5lib/lib/libslow5.a
 	$(CC) $(CFLAGS) $(OBJ) slow5lib/lib/libslow5.a $(LDFLAGS) -o $@
 
 HEADERS = src/error.h src/format.h  src/kseq.h  src/misc.h  src/model.h  \
-		 src/prof.h  src/rand.h  src/ref.h  src/seq.h  src/sq.h  src/str.h  src/version.h
+		  src/rand.h  src/ref.h  src/seq.h  src/sq.h  src/str.h  src/version.h
 
 $(BUILD_DIR)/main.o: src/main.c $(HEADERS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@

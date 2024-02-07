@@ -6,9 +6,9 @@
 #define SQ_H
 
 #include <stdint.h>
+#include "ref.h"
+#include "rand.h"
 #include "slow5/slow5.h"
-
-#define SQ_VERSION "0.2.2-dirty"
 
 //model types
 #define MODEL_TYPE_NUCLEOTIDE 1
@@ -39,26 +39,6 @@
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold
 
-typedef struct{
-    char **ref_names;
-    int32_t *ref_lengths;
-    char **ref_seq;
-    int num_ref;
-    int64_t sum;
-} ref_t;
-
-typedef struct{
-    double m;
-    double s;
-    int64_t x;
-} nrng_t;
-
-typedef struct{
-    double a;
-    double b;
-    int64_t x;
-} grng_t;
-
 typedef struct {
     double digitisation;
     double sample_rate;
@@ -71,16 +51,6 @@ typedef struct {
     double dwell_mean;
     double dwell_std;
 } profile_t;
-
-typedef struct {
-    int32_t num_ref;
-    char **ref_names;
-    int32_t *ref_lengths;
-    int32_t *ref_seq_lengths;
-
-    float **forward;
-    float **reverse;
-} refsynth_t;
 
 /* k-mer model */
 typedef struct {

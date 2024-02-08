@@ -206,6 +206,24 @@ static char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_
     return seq;
 }
 
+static inline int transcript_idx(core_t *core,int tid){
+    int seq_i = 0;
+    trans_t *trans = core->ref->trans_counts;
+    if(trans == NULL){
+        seq_i = round(rng(&core->ref_pos[tid])*(core->ref->num_ref-1));
+    } else {
+        float r = rng(&core->ref_pos[tid]);
+        //fprintf(stderr, "r: %f, ", r);
+        for(int i=0; i<trans->n; i++){
+            if(r <= trans->trans_csum[i]){
+                seq_i = trans->trans_idx[i];
+                //fprintf(stderr, "seq_i: %d\n", seq_i);
+                break;
+            }
+        }
+    }
+    return seq_i;
+}
 
 static char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int tid){
 
@@ -214,7 +232,7 @@ static char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_
 
         //int len = grng(core->rand_rlen); //for now the whole transcript is is simulated
 
-        int seq_i = round(rng(&core->ref_pos[tid])*(ref->num_ref-1)); //random transcript
+        int seq_i = transcript_idx(core,tid); //random transcript
         int len = ref->ref_lengths[seq_i];
         *ref_pos=0;
         *ref_id = ref->ref_names[seq_i];

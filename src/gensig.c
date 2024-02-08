@@ -1,5 +1,5 @@
 /* @file  gensig.c
-** Stupidly simple signal simulator
+** squigulator, a nanopore signal simulator
 **
 ** @@
 ******************************************************************************/

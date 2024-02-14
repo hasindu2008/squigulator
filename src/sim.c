@@ -444,7 +444,7 @@ void free_db(db_t* db) {
 
 //void gen_prefix_dna(int16_t *raw_signal, int64_t* n, int64_t *c, profile_t *profile, double offset);
 
-char *gen_read(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int8_t rna, int tid);
+char *gen_read(core_t *core, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int8_t rna, int tid);
 int16_t *gen_sig(core_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int8_t rna, int tid, aln_t *aln);
 
 
@@ -486,7 +486,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         ref_pos_st = 0;
         ref_pos_end = rlen;
     } else {
-        seq=gen_read(core, ref, &rid, &ref_len, &ref_pos_st, &rlen, &strand, rna, tid);
+        seq=gen_read(core, &rid, &ref_len, &ref_pos_st, &rlen, &strand, rna, tid);
         ref_pos_end = ref_pos_st+rlen;
     }
     if(rlen*core->profile.dwell_mean >= UINT32_MAX ){

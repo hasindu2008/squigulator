@@ -145,55 +145,87 @@ static inline int32_t is_bad_read(char *seq, int32_t len){
     return 0;
 }
 
-static char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int tid){
+
+static inline char *gen_read_common(ref_t *ref, int len, int seq_i, const char *ref_id, int32_t ref_pos, int32_t *rlen){
+    char *seq = (char *)malloc((len+1)*sizeof(char));
+    MALLOC_CHK(seq);
+    strncpy(seq,(ref->ref_seq[seq_i])+(ref_pos),len);
+    seq[len] = '\0';
+    *rlen = strlen(seq);
+    LOG_DEBUG("%d\t%d\t%d",*rlen, len, seq_i);
+    assert(*rlen <= len);
+    int nc = is_bad_read(seq, *rlen);
+    if(nc != 0){
+        if(nc == -1) {
+            LOG_TRACE("Too short read: <%d. %s:%d-%d. Trying again!",200,ref_id,ref_pos,ref_pos+*rlen);
+            if(short_warn ==0 && ref->ref_lengths[seq_i]<200){
+                WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
+                short_warn = 1;
+            }
+        } else if (nc == -2){
+            WARNING("Too long read: >=%d. %s:%d-%d. Trying again!",UINT32_MAX,ref_id,ref_pos,ref_pos+*rlen);
+        }
+        else{
+            LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,ref_id,ref_pos,ref_pos+*rlen);
+        }
+        free(seq);
+        seq = NULL;
+    }
+
+    return seq;
+
+}
+
+static inline int get_reference_idx(core_t *core, int tid, int32_t *ref_pos_gap){
+    ref_t *ref = core->ref;
+    int64_t ref_sum_pos = round(rng(&core->ref_pos[tid])*ref->sum); //serialised pos
+    assert(ref_sum_pos <= ref->sum);
+    int64_t s = 0;
+    int seq_i = 0;
+    for(seq_i=0; seq_i<ref->num_ref; seq_i++){ //check manually if logic is right
+        s+=ref->ref_lengths[seq_i];
+        if(s>=ref_sum_pos){
+            *ref_pos_gap = ref_sum_pos-s;
+            break;
+        }
+    }
+    assert(s<=ref->sum);
+    return seq_i;
+}
+
+static inline char get_strand(core_t *core, int tid){
+    int64_t strand = round(rng(&core->rand_strand[tid]));
+    char c = strand ? '+' : '-';
+    return c;
+}
+
+static inline int get_rlen(core_t *core, int tid){
+    int len = grng(core->rand_rlen[tid]);
+    return len;
+}
+
+static char *gen_read_dna(core_t *core, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int tid){
 
     char *seq = NULL;
+    ref_t *ref = core->ref;
+
     while(1){
 
-        int len = grng(core->rand_rlen[tid]);
-        int64_t ref_sum_pos = round(rng(&core->ref_pos[tid])*ref->sum); //serialised pos
-        assert(ref_sum_pos <= ref->sum);
-        int64_t s = 0;
-        int seq_i = 0;
-        for(seq_i=0; seq_i<ref->num_ref; seq_i++){ //check manually if logic is right
-            s+=ref->ref_lengths[seq_i];
-            if(s>=ref_sum_pos){
-                *ref_id = ref->ref_names[seq_i];
-                *ref_pos = ref_sum_pos-s+ref->ref_lengths[seq_i];
-                *ref_len = ref->ref_lengths[seq_i];
-                break;
-            }
-        }
-        assert(s<=ref->sum);
+        int len = get_rlen(core, tid);
 
-        int64_t strand = round(rng(&core->rand_strand[tid]));
-        *c = strand ? '+' : '-';
+        int32_t ref_pos_gap = 0;
+        int seq_i = get_reference_idx(core, tid, &ref_pos_gap);
+        *ref_id = ref->ref_names[seq_i];
+        *ref_pos = ref_pos_gap + ref->ref_lengths[seq_i];
+        *ref_len = ref->ref_lengths[seq_i];
 
-        seq= (char *)malloc((len+1)*sizeof(char));
-        MALLOC_CHK(seq);
-        strncpy(seq,(ref->ref_seq[seq_i])+(*ref_pos),len);
-        seq[len] = '\0';
-        *rlen = strlen(seq);
-        LOG_DEBUG("%d\t%d\t%d",*rlen, len, seq_i);
-        assert(*rlen <= len);
-        int nc = 0;
-        if((nc = is_bad_read(seq, *rlen))==0){
-           break;
-        } else {
-            if(nc == -1) {
-                LOG_TRACE("Too short read: <%d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
-                if(short_warn==0 && ref->ref_lengths[seq_i]<200){
-                    WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
-                    short_warn = 1;
-                }
-            }else if (nc == -2){
-                WARNING("Too long read: >=%d. %s:%d-%d. Trying again!",UINT32_MAX,*ref_id,*ref_pos,*ref_pos+*rlen);
-            }
-            else{
-                LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
-            }
-            free(seq);
+        *c = get_strand(core, tid);
+
+        seq = gen_read_common(ref, len, seq_i, *ref_id, *ref_pos, rlen);
+        if(seq){
+            break;
         }
+
     }
 
     if(*c == '-'){
@@ -206,7 +238,7 @@ static char *gen_read_dna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_
     return seq;
 }
 
-static inline int transcript_idx(core_t *core,int tid){
+static inline int get_transcript_idx(core_t *core,int tid){
     int seq_i = 0;
     trans_t *trans = core->ref->trans_counts;
     if(trans == NULL){
@@ -225,46 +257,43 @@ static inline int transcript_idx(core_t *core,int tid){
     return seq_i;
 }
 
-static char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int tid){
+
+static inline int get_transcript_len(core_t *core, int tid, int trans_len){
+    double len_frac = grng(core->rand_rlen[tid]) / (double)(core->opt.rlen);
+    int len = len_frac * trans_len;
+    len = len > trans_len ? trans_len : len;
+    return len;
+
+}
+
+static char *gen_read_rna(core_t *core, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int tid, int8_t cdna){
 
     char *seq = NULL;
+    ref_t *ref = core->ref;
     while(1){
 
         //int len = grng(core->rand_rlen); //for now the whole transcript is is simulated
 
-        int seq_i = transcript_idx(core,tid); //random transcript
+        int seq_i = get_transcript_idx(core,tid); //random transcript
+        *ref_id = ref->ref_names[seq_i];
+
         int len = ref->ref_lengths[seq_i];
         *ref_pos=0;
-        *ref_id = ref->ref_names[seq_i];
+        if(core->opt.flag & SQ_TRANS_TRUNC){
+            len = get_transcript_len(core, tid, len);
+            *ref_pos = ref->ref_lengths[seq_i] - len;
+        }
         *ref_len = len;
 
-        //int64_t strand = round(rng(&core->rand_strand));
-        *c = '+'; //strand is alwats plus
-
-        seq= (char *)malloc((len+1)*sizeof(char));
-        MALLOC_CHK(seq);
-        strncpy(seq,(ref->ref_seq[seq_i])+(*ref_pos),len);
-        seq[len] = '\0';
-        *rlen = strlen(seq);
-        LOG_DEBUG("%d\t%d\t%d",*rlen, len, seq_i);
-        assert(*rlen == len);
-        int nc = 0;
-        if((nc = is_bad_read(seq, *rlen))==0){
-           break;
+        if(cdna){
+            *c = get_strand(core, tid); //only difference to rna
         } else {
-            if(nc == -1) {
-                LOG_TRACE("Too short read: <%d. %s:%d-%d. Trying again!",200,*ref_id,*ref_pos,*ref_pos+*rlen);
-                if(short_warn ==0 && ref->ref_lengths[seq_i]<200){
-                    WARNING("Reference sequence is too short: %d. Expected to be >=200. Open a pull request if you need support for such tiny references.",ref->ref_lengths[seq_i]);
-                    short_warn = 1;
-                }
-            } else if (nc == -2){
-                WARNING("Too long read: >=%d. %s:%d-%d. Trying again!",UINT32_MAX,*ref_id,*ref_pos,*ref_pos+*rlen);
-            }
-            else{
-                LOG_TRACE("Too many Ns in read: %d. %s:%d-%d. Trying again!",nc,*ref_id,*ref_pos,*ref_pos+*rlen);
-            }
-            free(seq);
+            *c = '+'; //strand is always plus
+        }
+
+        seq = gen_read_common(ref, len, seq_i, *ref_id, *ref_pos, rlen);
+        if(seq){
+            break;
         }
 
     }
@@ -273,6 +302,17 @@ static char *gen_read_rna(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_
 
 }
 
-char *gen_read(core_t *core, ref_t *ref, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int8_t rna, int tid){
-    return rna ? gen_read_rna(core, ref, ref_id, ref_len, ref_pos, rlen, c, tid): gen_read_dna(core, ref, ref_id, ref_len, ref_pos, rlen, c, tid);
+
+char *gen_read(core_t *core, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int8_t rna, int tid){
+    char *seq = NULL;
+    if (rna) {
+        seq = gen_read_rna(core, ref_id, ref_len, ref_pos, rlen, c, tid, 0);
+    } else {
+        if(core->opt.flag & SQ_CDNA){
+            seq = gen_read_rna(core, ref_id, ref_len, ref_pos, rlen, c, tid, 1);
+        } else {
+            seq = gen_read_dna(core, ref_id, ref_len, ref_pos, rlen, c, tid);
+        }
+    }
+    return seq;
 }

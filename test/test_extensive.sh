@@ -67,8 +67,8 @@ CHECK_ACC 0.89 a.acc
 REMOVE_TMP
 
 echo "R10 DNA"
-./squigulator -x dna-r10-prom $REF_HG38 -o new.blow5 2> a.log || die "squigulator failed"
-eel  -i new.blow5 --config dna_r10.4.1_e8.2_400bps_sup.cfg --device cuda:all -o new.fastq -a new.sam&>> a.log || die "eel failed"
+./squigulator -x dna-r10-prom $REF_HG38 -o new.blow5 -a new.sam 2> a.log || die "squigulator failed"
+eel  -i new.blow5 --config dna_r10.4.1_e8.2_400bps_sup.cfg --device cuda:all -o new.fastq  &>> a.log || die "eel failed"
 identitydna.sh $REF_HG38_IDX new.fastq > a.acc  2>> a.log || die "identitydna failed"
 cat a.acc
 CHECK_ACC 0.85 a.acc

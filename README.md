@@ -42,7 +42,7 @@ After getting the basic *ssssim* implemented in ~8 hours and successfully baseca
 For x86-64 Linux, you can use the precompiled binaries under [releases](https://github.com/hasindu2008/squigulator/releases):
 
 ```
-VERSION=0.2.2
+VERSION=0.2.2-dirty
 wget https://github.com/hasindu2008/squigulator/releases/download/v${VERSION}/squigulator-v${VERSION}-x86_64-linux-binaries.tar.gz
 tar xf squigulator-v${VERSION}-x86_64-linux-binaries.tar.gz  && cd squigulator-v${VERSION}
 ./squigulator --help
@@ -78,6 +78,8 @@ By default, DNA PromethION reads (R9.4.1) will be simulated. Specify the `-x STR
 - `rna-r9-prom`: direct RNA on PromethION R9.4.1 flowcells
 - `dna-r10-min`: genomic DNA on MinION R10.4.1 flowcells
 - `dna-r10-prom`: genomic DNA on PromethION R10.4.1 flowcells
+- `rna004-min`: direct RNA on MinION RNA004 flowcells
+- `rna004-prom`: direct RNA on promethION RNA004 flowcells
 
 If a genomic DNA profile is selected, the input reference must be the **reference genome in *FASTA* format**. *squigulator* will randomly sample the genome from a uniform distribution and generate reads whose lengths are from a gamma distribution (based on `-r`). If a direct RNA profile is selected, the input reference must be the **transcriptome in *FASTA* format**. For RNA, *squigulator* will randomly pick transcripts from a uniform distribution and the whole transcript length is simulated.
 

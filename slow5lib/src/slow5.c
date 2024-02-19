@@ -2326,6 +2326,11 @@ int slow5_aux_meta_add_enum(struct slow5_aux_meta *aux_meta, const char *attr, e
     return 0;
 }
 
+int  slow5_aux_add_enum(const char *field, const char **enum_labels, uint8_t num_labels, slow5_hdr_t *header){
+    int ret = slow5_aux_meta_add_enum(header->aux_meta, field, SLOW5_ENUM, enum_labels, num_labels);
+    return ret;
+}
+
 void slow5_aux_meta_free(struct slow5_aux_meta *aux_meta) {
     if (aux_meta) {
         if (aux_meta->attrs) {
@@ -4139,6 +4144,26 @@ int slow5_idx_load(struct slow5_file *s5p) {
     }
 }
 
+/**
+ * Loads the index file for slow5 file given it's pathname.
+ * Will not create the index if not found.
+ *
+ * Return -1 on error,
+ * 0 on success.
+ *
+ * @param   s5p slow5 file structure
+ * @param   pathname    relative or absolute path to slow5 file
+ * @return  error codes described above
+ */
+int slow5_idx_load_with(slow5_file_t *s5p, const char *pathname){
+    s5p->index = slow5_idx_init_with(s5p, pathname);
+    if (s5p->index) {
+        return 0;
+    } else {
+        return -1;
+    }
+}
+
 void slow5_idx_unload(struct slow5_file *s5p) {
     slow5_idx_free(s5p->index);
     s5p->index = NULL;
@@ -4229,7 +4254,11 @@ const char *slow5_fmt_get_name(enum slow5_fmt format) {
 char *slow5_get_idx_path(const char *path) {
     size_t new_len = strlen(path) + strlen(SLOW5_INDEX_EXTENSION);
     char *str = (char *) malloc((new_len + 1) * sizeof *str); // +1 for '\0'
-    SLOW5_MALLOC_CHK(str);
+    if (!str) {
+        SLOW5_MALLOC_ERROR();
+        slow5_errno = SLOW5_ERR_MEM;
+        return NULL;
+    }
     memcpy(str, path, strlen(path));
     strcpy(str + strlen(path), SLOW5_INDEX_EXTENSION);
 

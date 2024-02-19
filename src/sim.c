@@ -134,7 +134,7 @@ profile_t prom_rna004_rna_prof = {
     .median_before_mean=205.63935594369,
     .median_before_std=8.3994882799157,
     .dwell_mean=31.0, //this must be sample_rate/bps for now
-    .dwell_std=4.0
+    .dwell_std=0.0
 };
 profile_t minion_rna004_rna_prof = {
     .digitisation = 8192,
@@ -146,7 +146,7 @@ profile_t minion_rna004_rna_prof = {
     .median_before_mean=202.15407438804,
     .median_before_std=13.406139241768,
     .dwell_mean=31.0, //this must be sample_rate/bps for now
-    .dwell_std=4.0
+    .dwell_std=0.0
 };
 
 static inline profile_t set_profile(char *prof_name, opt_t *opt){

@@ -6,8 +6,8 @@
 
 Reads directly extracted from the reference genome are simulated without any mutations/variants. If you want to have variants in your simulated data, you can first apply a set of variants to the reference using [bcftools](http://www.htslib.org/download/) and use that as the input to the *squigulator*.
 
-Preprint: https://www.biorxiv.org/content/10.1101/2023.05.09.539953v1<br/>
-SLOW5 ecosystem: https://hasindu2008.github.io/slow5<br/>
+Preprint: [https://www.biorxiv.org/content/10.1101/2023.05.09.539953v1](https://www.biorxiv.org/content/10.1101/2023.05.09.539953v1)<br/>
+SLOW5 ecosystem: [https://hasindu2008.github.io/slow5](https://hasindu2008.github.io/slow5)<br/>
 
 ![squigulator](docs/img/example.svg)
 
@@ -71,7 +71,7 @@ The simplest command to generate reads:
 squigulator [OPTIONS] ref_genome.fa -o out_signal.blow5 -n NUM_READS
 ```
 
-By default, DNA PromethION reads (R9.4.1) will be simulated. Specify the `-x STR` option to set a different profile from the following available pre-sets (inspired by pre-sets in [Minimap2](https://github.com/lh3/minimap2)).
+By default, DNA PromethION reads (R9.4.1) will be simulated. Specify the `-x STR` option to set a different profile from the following available pre-sets (see [here](docs/profile) for more info)).
 - `dna-r9-min`: genomic DNA on MinION R9.4.1 flowcells
 - `dna-r9-prom`: genomic DNA on PromethION R9.4.1 flowcells
 - `rna-r9-min`: direct RNA on MinION R9.4.1 flowcells

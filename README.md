@@ -71,7 +71,7 @@ The simplest command to generate reads:
 squigulator [OPTIONS] ref_genome.fa -o out_signal.blow5 -n NUM_READS
 ```
 
-By default, DNA PromethION reads (R9.4.1) will be simulated. Specify the `-x STR` option to set a different profile from the following available pre-sets (see [here](docs/profile) for more info)).
+By default, DNA PromethION reads (R9.4.1) will be simulated. Specify the `-x STR` option to set a different profile from the following available pre-sets (see [here](docs/profile.md) for more info).
 - `dna-r9-min`: genomic DNA on MinION R9.4.1 flowcells
 - `dna-r9-prom`: genomic DNA on PromethION R9.4.1 flowcells
 - `rna-r9-min`: direct RNA on MinION R9.4.1 flowcells

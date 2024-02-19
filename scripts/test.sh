@@ -82,4 +82,21 @@ ex ./squigulator -x dna-r10-prom -o a.slow5 -n 2 --seed 2 --dwell-std 4.0 -t1 te
 diff -q test/dna_r10_paf-ref.exp a.slow5 || die "diff failed"
 diff -q test/dna_r10_paf-ref.sam.exp a.sam || die "diff failed"
 
+
+redundancy_check () {
+    N=$(grep -v ^[@#] a.slow5 | cut -f ${1}  | sort | uniq -c | sort -nr -k1,1 | head -1 | awk '{print $1}')
+    [ "$N" != "1" ] && die "failed thread test for column ${1}"
+}
+
+ex ./squigulator -x dna-r9-min test/nCoV-2019.reference.fasta -n 100 -t 8 -K 10 -o a.slow5 --seed 1
+# read_id        read_group      digitisation    offset  range   sampling_rate   len_raw_signal  raw_signal
+# 9channel_number  10median_before   11read_number     12start_mux        13start_time
+redundancy_check 1
+redundancy_check 4
+redundancy_check 7
+redundancy_check 8
+redundancy_check 10
+redundancy_check 11
+redundancy_check 13
+
 echo "Test passed"

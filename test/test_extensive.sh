@@ -63,7 +63,7 @@ echo "R10 DNA ideal-time"
 eel  -i new.blow5 --config dna_r10.4.1_e8.2_400bps_sup.cfg --device cuda:all -o new.fastq &>> a.log || die "eel failed"
 identitydna.sh $REF_HG38_IDX new.fastq > a.acc 2>> a.log || die "identitydna failed"
 cat a.acc
-CHECK_ACC 0.89 a.acc
+CHECK_ACC 0.91 a.acc
 REMOVE_TMP
 
 echo "R10 DNA"
@@ -71,7 +71,15 @@ echo "R10 DNA"
 eel  -i new.blow5 --config dna_r10.4.1_e8.2_400bps_sup.cfg --device cuda:all -o new.fastq  &>> a.log || die "eel failed"
 identitydna.sh $REF_HG38_IDX new.fastq > a.acc  2>> a.log || die "identitydna failed"
 cat a.acc
-CHECK_ACC 0.85 a.acc
+CHECK_ACC 0.90 a.acc
 samtools sort -o new.bam new.sam || die "samtools failed"
 samtools index new.bam || die "samtools failed"
+REMOVE_TMP
+
+echo "RNA004 RNA"
+./squigulator -x rna004-prom $REF_GENCODE -o new.blow5  2> a.log || die "squigulator failed"
+/install/buttery-eel-0.4.2+dorado7.2.13/scripts/eel  -i new.blow5 --config rna_rp4_130bps_sup.cfg --device cuda:all -o new.fastq &>> a.log|| die "eel failed"
+identityrna.sh $REF_GENCODE new.fastq > a.acc 2>> a.log || die "identitydna failed"
+cat a.acc
+CHECK_ACC 0.77 a.acc
 REMOVE_TMP

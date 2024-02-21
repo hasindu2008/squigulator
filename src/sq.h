@@ -23,6 +23,7 @@
 #define MODEL_ID_RNA_R9_NUCLEOTIDE 2
 #define MODEL_ID_DNA_R10_NUCLEOTIDE 3
 #define MODEL_ID_RNA_RNA004_NUCLEOTIDE 4
+#define MODEL_ID_DNA_R9_CPG 5
 
 /*******************************************************
  * flags related to the user specified options (opt_t) *
@@ -37,8 +38,6 @@
 #define SQ_PAF_REF 0x080 //in paf output, use ref as target
 #define SQ_TRANS_TRUNC 0x100 //trans-trunc
 #define SQ_CDNA 0x200 //CDNA
-
-
 
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold
@@ -80,6 +79,9 @@ typedef struct{
     int32_t batch_size; //K
 
     float amp_noise;
+
+    const char *meth_freq;
+    const char *meth_model_file;
 } opt_t;
 
 typedef struct {
@@ -96,6 +98,7 @@ typedef struct {
     uint32_t kmer_size;
     uint32_t num_kmer;
 
+    model_t *cpgmodel;
     //opt
     opt_t opt;
 

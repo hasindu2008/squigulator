@@ -152,12 +152,12 @@ uint32_t set_model(model_t* model, uint32_t model_id) {
         inbuilt_model=r9_4_450bps_nucleotide_6mer_template_model_builtin_data;
         assert(num_kmer == (uint32_t)(1 << 2*kmer_size)); //num_kmer should be 4^kmer_size
     }
-    // else if(model_id==MODEL_ID_DNA_CPG){
-    //     kmer_size=6;
-    //     num_kmer=15625;
-    //     inbuilt_model=r9_4_450bps_cpg_6mer_template_model_builtin_data;
-    //     assert(num_kmer == (uint32_t)pow(5,kmer_size)); //num_kmer should be 5^kmer_size
-    // }
+    else if(model_id==MODEL_ID_DNA_R9_CPG){
+        kmer_size=6;
+        num_kmer=15625;
+        inbuilt_model=r9_4_450bps_cpg_6mer_template_model_builtin_data;
+        assert(num_kmer == (uint32_t)pow(5,kmer_size)); //num_kmer should be 5^kmer_size
+    }
     else if(model_id==MODEL_ID_RNA_R9_NUCLEOTIDE){
         kmer_size=5;
         num_kmer=1024;

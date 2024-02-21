@@ -209,6 +209,8 @@ static void init_opt(opt_t *opt){
     opt->num_thread = 8;
     opt->batch_size = 1000;
     opt->amp_noise = 1;
+    opt->meth_model_file = NULL;
+    opt->meth_freq = NULL;
 }
 
 static void init_rand(core_t *core){
@@ -252,6 +254,7 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
     core->profile = p;
     core->model = (model_t*)malloc(sizeof(model_t) * MAX_NUM_KMER); //todo not very memory efficient - do dynamically
     MALLOC_CHK(core->model);
+
     uint32_t k = 0;
     if (opt.model_file) {
         k=read_model(core->model, opt.model_file, MODEL_TYPE_NUCLEOTIDE);
@@ -280,12 +283,48 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
     core->kmer_size = k;
     core->num_kmer = (uint32_t)(1 << 2*k);
 
+    uint32_t kmer_size_meth=0;
+    if(opt.meth_freq){
+        core->cpgmodel = (model_t*)malloc(sizeof(model_t) * MAX_NUM_KMER_METH);
+        MALLOC_CHK(core->cpgmodel);
+
+        if (opt.meth_model_file) {
+            kmer_size_meth=read_model(core->cpgmodel, opt.meth_model_file, MODEL_TYPE_METH);
+        } else {
+
+            if(opt.flag & SQ_RNA){
+                ERROR("%s","Methylation simulation is not supported for RNA data.");
+                exit(EXIT_FAILURE);
+            }
+
+            if(opt.flag & SQ_R10){
+                //INFO("%s","builtin DNA R10 cpg model loaded");
+                ERROR("%s","DNA R10 meth model not implemeted yet!")
+                //kmer_size_meth=set_model(core->cpgmodel, MODEL_ID_DNA_R10_CPG);
+            } else {
+                INFO("%s","builtin DNA R9 cpg model loaded");
+                kmer_size_meth=set_model(core->cpgmodel, MODEL_ID_DNA_R9_CPG);
+            }
+        }
+        if(k != kmer_size_meth){
+            ERROR("The k-mer size of the nucleotide model (%d) and the methylation model (%d) should be the same.",k,kmer_size_meth);
+            exit(EXIT_FAILURE);
+        }
+
+    } else {
+        core->cpgmodel = NULL;
+    }
+
+
     init_rand(core);
 
     core->ref = load_ref(refname);
     if(trans_count!=NULL){
         load_trans_count(trans_count,core->ref);
         assert((opt.flag & SQ_RNA) || (opt.flag & SQ_CDNA));
+    }
+    if(opt.meth_freq!=NULL){
+        load_meth_freq(opt.meth_freq, core->ref);
     }
 
     core->sp = slow5_open(output_file, "w");
@@ -356,6 +395,7 @@ void free_core(core_t *core){
     free(core->rand_strand);
 
     free(core->model);
+    free(core->cpgmodel);
 
     if(core->fp_fasta){
         fclose(core->fp_fasta);
@@ -631,6 +671,7 @@ static struct option long_options[] = {
     {"trans-count", required_argument, 0, 0 },             //32 transcript count
     {"trans-trunc", required_argument, 0, 0 },             //33 transcript truncate
     {"cdna", no_argument, 0, 0 },                   //34 cdna
+    {"meth-freq", required_argument, 0, 0 },                   //35 meth-freq
     {0, 0, 0, 0}};
 
 
@@ -683,6 +724,7 @@ static void print_help(FILE *fp_help, opt_t opt, profile_t p, int64_t nreads) {
     fprintf(fp_help,"   --cdna                     generate cDNA reads (only valid with dna profiles and the reference must a transcriptome, experimental)\n");
     fprintf(fp_help,"   --trans-count FILE         simulate relative abundance using specified tsv with transcript name & count  (only for direct-rna and cDNA, experimental)\n");
     fprintf(fp_help,"   --trans-trunc=yes/no       simulate transcript truncattion (only for direct-rna and cDNA, experimental) [no]\n");
+    fprintf(fp_help,"   --meth-freq FILE           simulate CpG methylation using specified frequency file, tsv file with chr, pos and freq as the columns (only for DNA, experimental) [no]\n");
 
     fprintf(fp_help,"\ndeveloper options (not much tested yet):\n");
     fprintf(fp_help,"   --digitisation FLOAT       ADC digitisation [%.1f]\n",p.digitisation);
@@ -917,6 +959,9 @@ int sim_main(int argc, char* argv[], double realtime0) {
             opt_gvn.cdna = 1;
             opt.flag |= SQ_CDNA;
             WARNING("%s","Option --cdna is experimental. Please report any issues.")
+        } else if (c == 0 && longindex == 35){ //transcript count
+            opt.meth_freq = optarg;
+            WARNING("%s","Option --meth-freq is experimental. Please report any issues.")
         } else if (c == '?'){
             exit(EXIT_FAILURE);
         } else {

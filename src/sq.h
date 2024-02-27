@@ -91,6 +91,7 @@ typedef struct {
     grng_t **rand_rlen;
     nrng_t **rand_offset;
     nrng_t **rand_median_before;
+    int64_t *rand_meth;
 
     profile_t profile;
     model_t *model;

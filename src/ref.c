@@ -354,5 +354,8 @@ void load_meth_freq(const char *meth_freq, ref_t *ref){
         //fprintf(stderr,"%s,%d,%f,%d\n",name,pos,freq,f);
 
     }
+
+    free(buffer);
+    fclose(fp);
     return;
 }

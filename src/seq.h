@@ -41,6 +41,39 @@ static inline uint32_t get_kmer_rank(const char* str, uint32_t k) {
     return r;
 }
 
+//for methylation models
+static inline uint32_t get_meth_rank(char base) {
+    if (base == 'A') { //todo: do we neeed simple alpha?
+        return 0;
+    } else if (base == 'C') {
+        return 1;
+    } else if (base == 'G') {
+        return 2;
+    } else if (base == 'M') {
+        return 3;
+    } else if (base == 'T') {
+        return 4;
+    } else {
+        WARNING("A None ACGMT base found : %c", base);
+        return 0;
+    }
+}
+
+static inline uint32_t get_meth_kmer_rank(const char* str, uint32_t k) {
+    uint32_t p = 1;
+    uint32_t r = 0;
+
+    // from last base to first
+    for (uint32_t i = 0; i < k; ++i) {
+        //r += rank(str[k - i - 1]) * p;
+        //p *= size();
+        r += get_meth_rank(str[k - i - 1]) * p;
+        p *= 5;
+    }
+    return r;
+}
+
+
 static inline char complement(char c){
     char r;
     switch (c){

@@ -229,6 +229,13 @@ static void init_rand(core_t *core){
     core->rand_median_before = (nrng_t **) malloc(t*sizeof(nrng_t *));  MALLOC_CHK(core->rand_median_before);
     core->kmer_gen = (nrng_t ***) malloc(t*sizeof(nrng_t **));          MALLOC_CHK(core->kmer_gen);
 
+    if(core->opt.meth_freq){
+        m = core->cpgmodel;
+        core->rand_meth = (int64_t *) malloc(t*sizeof(int64_t));         MALLOC_CHK(core->rand_meth);
+    } else {
+        core->rand_meth = NULL;
+    }
+
     int64_t seed = opt.seed;
     for(int i=0; i<t; i++){
         core->ref_pos[i] = seed;
@@ -242,6 +249,11 @@ static void init_rand(core_t *core){
         for (uint32_t j = 0; j < n; j++){
             core->kmer_gen[i][j] = init_nrng(seed+j, m[j].level_mean, m[j].level_stdv*opt.amp_noise);
         }
+
+        if(core->opt.meth_freq){
+            core->rand_meth[i] = seed+6;
+        }
+
 
         seed += (n+10);
     }
@@ -310,6 +322,7 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
             ERROR("The k-mer size of the nucleotide model (%d) and the methylation model (%d) should be the same.",k,kmer_size_meth);
             exit(EXIT_FAILURE);
         }
+        core->num_kmer = (uint32_t)pow(5,k);
 
     } else {
         core->cpgmodel = NULL;
@@ -393,6 +406,9 @@ void free_core(core_t *core){
     free(core->rand_median_before);
     free(core->ref_pos);
     free(core->rand_strand);
+    if(core->opt.meth_freq){
+        free(core->rand_meth);
+    }
 
     free(core->model);
     free(core->cpgmodel);
@@ -724,7 +740,7 @@ static void print_help(FILE *fp_help, opt_t opt, profile_t p, int64_t nreads) {
     fprintf(fp_help,"   --cdna                     generate cDNA reads (only valid with dna profiles and the reference must a transcriptome, experimental)\n");
     fprintf(fp_help,"   --trans-count FILE         simulate relative abundance using specified tsv with transcript name & count  (only for direct-rna and cDNA, experimental)\n");
     fprintf(fp_help,"   --trans-trunc=yes/no       simulate transcript truncattion (only for direct-rna and cDNA, experimental) [no]\n");
-    fprintf(fp_help,"   --meth-freq FILE           simulate CpG methylation using specified frequency file, tsv file with chr, pos and freq as the columns (only for DNA, experimental) [no]\n");
+    fprintf(fp_help,"   --meth-freq FILE           simulate CpG methylation using specified frequency file, tsv file with chr, pos and freq as the columns (only for DNA, experimental)\n");
 
     fprintf(fp_help,"\ndeveloper options (not much tested yet):\n");
     fprintf(fp_help,"   --digitisation FLOAT       ADC digitisation [%.1f]\n",p.digitisation);

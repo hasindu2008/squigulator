@@ -194,6 +194,9 @@ int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_
     profile_t *profile = &core->profile;
     uint32_t kmer_size = core->kmer_size;
     model_t *pore_model = core->model;
+    if(core->opt.meth_freq){
+        pore_model = core->cpgmodel;
+    }
 
     int8_t ideal = core->opt.flag & SQ_IDEAL;
     int8_t ideal_time = core->opt.flag & SQ_IDEAL_TIME;
@@ -211,6 +214,9 @@ int16_t * gen_sig_core_seq(core_t *core, int16_t *raw_signal, int64_t* n, int64_
 
     for (int i=0; i< n_kmers; i++){
         uint32_t kmer_rank = get_kmer_rank(read+i, kmer_size);
+        if(core->opt.meth_freq){
+            kmer_rank = get_meth_kmer_rank(read+i, kmer_size);
+        }
         if(!(ideal || ideal_time)){
             sps = round(nrng(core->rand_time[tid]));
             sps = sps < 1 ? -sps + 1 : sps;

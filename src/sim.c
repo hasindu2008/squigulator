@@ -254,7 +254,6 @@ static void init_rand(core_t *core){
             core->rand_meth[i] = seed+6;
         }
 
-
         seed += (n+10);
     }
 }
@@ -740,7 +739,7 @@ static void print_help(FILE *fp_help, opt_t opt, profile_t p, int64_t nreads) {
     fprintf(fp_help,"   --cdna                     generate cDNA reads (only valid with dna profiles and the reference must a transcriptome, experimental)\n");
     fprintf(fp_help,"   --trans-count FILE         simulate relative abundance using specified tsv with transcript name & count  (only for direct-rna and cDNA, experimental)\n");
     fprintf(fp_help,"   --trans-trunc=yes/no       simulate transcript truncattion (only for direct-rna and cDNA, experimental) [no]\n");
-    fprintf(fp_help,"   --meth-freq FILE           simulate CpG methylation using specified frequency file, tsv file with chr, pos and freq as the columns (only for DNA, experimental)\n");
+    fprintf(fp_help,"   --meth-freq FILE           simulate CpG methylation using specified frequency file, tsv file with chr, 0-based pos and freq as the columns (only for DNA, experimental)\n");
 
     fprintf(fp_help,"\ndeveloper options (not much tested yet):\n");
     fprintf(fp_help,"   --digitisation FLOAT       ADC digitisation [%.1f]\n",p.digitisation);

@@ -338,6 +338,16 @@ static char *gen_read_rna(core_t *core, char **ref_id, int32_t *ref_len, int32_t
 
     }
 
+    if(cdna){
+        if(*c == '-'){
+            char *r = reverse_complement(seq);
+            r[*rlen] = '\0';
+            free(seq);
+            seq = r;
+        }
+
+    }
+
     return seq;
 
 }

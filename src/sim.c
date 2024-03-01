@@ -682,7 +682,7 @@ static void print_help(FILE *fp_help, opt_t opt, profile_t p, int64_t nreads) {
     fprintf(fp_help,"   --paf-ref                  in paf output, use the reference as the target instead of read (needs -c)\n");
     fprintf(fp_help,"   --cdna                     generate cDNA reads (only valid with dna profiles and the reference must a transcriptome, experimental)\n");
     fprintf(fp_help,"   --trans-count FILE         simulate relative abundance using specified tsv with transcript name & count  (only for direct-rna and cDNA, experimental)\n");
-    fprintf(fp_help,"   --trans-trunc=yes/no       simulate transcript truncattion (only for direct-rna and cDNA, experimental) [no]\n");
+    fprintf(fp_help,"   --trans-trunc=yes/no       simulate transcript truncattion (only for direct-rna, experimental) [no]\n");
 
     fprintf(fp_help,"\ndeveloper options (not much tested yet):\n");
     fprintf(fp_help,"   --digitisation FLOAT       ADC digitisation [%.1f]\n",p.digitisation);
@@ -932,6 +932,11 @@ int sim_main(int argc, char* argv[], double realtime0) {
 
     //check args
     check_args(opt_gvn, rna, opt, paf);
+
+    if((opt.flag & SQ_CDNA) && (opt.flag & SQ_TRANS_TRUNC)){
+        ERROR("%s","Option --trans-trunc is not yet implemnted for --cdna.");
+        exit(EXIT_FAILURE);
+    }
 
     if((opt.flag & SQ_CDNA) && (opt.flag & SQ_PREFIX)){
         ERROR("%s","Option --prefix is not yet implemnted for --cdna.");

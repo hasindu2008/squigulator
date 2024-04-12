@@ -42,10 +42,10 @@ SOFTWARE.
 #include "error.h"
 #include "misc.h"
 
-void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10);
-void set_header_aux_fields(slow5_file_t *sp);
+void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10, double sample_frequency);
+void set_header_aux_fields(slow5_file_t *sp, int8_t ont_friendly);
 void set_record_primary_fields(profile_t *profile, slow5_rec_t *slow5_record, char *read_id, double offset, int64_t len_raw_signal, int16_t *raw_signal);
-void set_record_aux_fields(slow5_rec_t *slow5_record, slow5_file_t *sp, double median_before, int32_t read_number, uint64_t start_time);
+void set_record_aux_fields(slow5_rec_t *slow5_record, slow5_file_t *sp, double median_before, int32_t read_number, uint64_t start_time, int8_t ont_friendly);
 uint32_t read_model(model_t* model, const char* file, uint32_t type);
 uint32_t set_model(model_t* model, uint32_t model_id);
 
@@ -294,8 +294,8 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
         exit(EXIT_FAILURE);
     }
 
-    set_header_attributes(core->sp, opt.flag & SQ_RNA ? 1 : 0, opt.flag & SQ_R10 ? 1 : 0);
-    set_header_aux_fields(core->sp);
+    set_header_attributes(core->sp, opt.flag & SQ_RNA ? 1 : 0, opt.flag & SQ_R10 ? 1 : 0, p.sample_rate);
+    set_header_aux_fields(core->sp, opt.flag & SQ_ONT ? 1 : 0);
 
     if(slow5_hdr_write(core->sp) < 0){
         ERROR("%s","Error writing header!\n");
@@ -439,7 +439,13 @@ void free_db(db_t* db) {
     free(db);
 }
 
-
+void fake_uuid(char *read_id, int64_t num){
+    if(num>999999999999){
+        ERROR("Too many reads that my lazy fake uuid generator cannot handle %ld is too large. Open an issue and I will fix this",num);
+        exit(EXIT_FAILURE);
+    }
+    sprintf(read_id,"00000000-0000-0000-0000-%012d",(int)num);
+}
 
 
 //void gen_prefix_dna(int16_t *raw_signal, int64_t* n, int64_t *c, profile_t *profile, double offset);
@@ -501,7 +507,11 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
 
     char *read_id= (char *)malloc(sizeof(char)*(10000));
     MALLOC_CHK(read_id);
-    sprintf(read_id,"S1_%ld!%s!%d!%d!%c",core->total_reads+i+1, rid, ref_pos_st, ref_pos_end, strand);
+    if(opt.flag & SQ_ONT){
+        fake_uuid(read_id, core->total_reads+i+1);
+    } else {
+        sprintf(read_id,"S1_%ld!%s!%d!%d!%c",core->total_reads+i+1, rid, ref_pos_st, ref_pos_end, strand);
+    }
     if(core->fp_fasta){
         db->fasta[i] = (char *)malloc(sizeof(char)*(strlen(read_id)+strlen(seq)+10)); //+10 bit inefficent - for now
         MALLOC_CHK(db->fasta[i]);
@@ -535,7 +545,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
 
     int64_t n_samples = __sync_fetch_and_add(&core->n_samples, len_raw_signal);
     set_record_primary_fields(&core->profile, slow5_record, read_id, offset, len_raw_signal, raw_signal);
-    set_record_aux_fields(slow5_record, sp, median_before, core->total_reads+i, n_samples);
+    set_record_aux_fields(slow5_record, sp, median_before, core->total_reads+i, n_samples, opt.flag & SQ_ONT ? 1 : 0);
 
     //encode to a buffer
     if (slow5_encode(&db->mem_records[i], &db->mem_bytes[i], slow5_record, sp) < 0){
@@ -631,6 +641,7 @@ static struct option long_options[] = {
     {"trans-count", required_argument, 0, 0 },             //32 transcript count
     {"trans-trunc", required_argument, 0, 0 },             //33 transcript truncate
     {"cdna", no_argument, 0, 0 },                   //34 cdna
+    {"ont-friendly", required_argument, 0, 0},             //35 ont-friendly
     {0, 0, 0, 0}};
 
 
@@ -683,6 +694,7 @@ static void print_help(FILE *fp_help, opt_t opt, profile_t p, int64_t nreads) {
     fprintf(fp_help,"   --cdna                     generate cDNA reads (only valid with dna profiles and the reference must a transcriptome, experimental)\n");
     fprintf(fp_help,"   --trans-count FILE         simulate relative abundance using specified tsv with transcript name & count  (only for direct-rna and cDNA, experimental)\n");
     fprintf(fp_help,"   --trans-trunc=yes/no       simulate transcript truncattion (only for direct-rna, experimental) [no]\n");
+    fprintf(fp_help,"   --ont-friendly=yes/no      generate fake uuid for readids and add a dummy end_reason [no]\n");
 
     fprintf(fp_help,"\ndeveloper options (not much tested yet):\n");
     fprintf(fp_help,"   --digitisation FLOAT       ADC digitisation [%.1f]\n",p.digitisation);
@@ -917,6 +929,8 @@ int sim_main(int argc, char* argv[], double realtime0) {
             opt_gvn.cdna = 1;
             opt.flag |= SQ_CDNA;
             WARNING("%s","Option --cdna is experimental. Please report any issues.")
+        } else if (c == 0 && longindex == 35){ //ont-friendly
+            yes_or_no(&opt, SQ_ONT, longindex, optarg, 1);
         } else if (c == '?'){
             exit(EXIT_FAILURE);
         } else {

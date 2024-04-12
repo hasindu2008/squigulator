@@ -1,13 +1,14 @@
 /* @file main.c
+** squigulator, a nanopore signal simulator
 **
 ******************************************************************************/
-#include <stdlib.h>
-#include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <signal.h>
-#include <assert.h>
-#include "sq.h"
+
+#include "version.h"
 #include "misc.h"
 #include "error.h"
 

@@ -6,11 +6,30 @@
 
 Reads directly extracted from the reference genome are simulated without any mutations/variants. If you want to have variants in your simulated data, you can first apply a set of variants to the reference using [bcftools](http://www.htslib.org/download/) and use that as the input to the *squigulator*.
 
+Preprint: [https://www.biorxiv.org/content/10.1101/2023.05.09.539953v1](https://www.biorxiv.org/content/10.1101/2023.05.09.539953v1)<br/>
+SLOW5 ecosystem: [https://hasindu2008.github.io/slow5](https://hasindu2008.github.io/slow5)<br/>
+
 ![squigulator](docs/img/example.svg)
 
 [![GitHub Downloads](https://img.shields.io/github/downloads/hasindu2008/squigulator/total?logo=GitHub)](https://github.com/hasindu2008/squigulator/releases)
 [![BioConda Install](https://img.shields.io/conda/dn/bioconda/squigulator?label=BioConda)](https://anaconda.org/bioconda/squigulator)
 [![x86_64](https://github.com/hasindu2008/squigulator/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/hasindu2008/squigulator/actions/workflows/c-cpp.yml)
+
+
+Please cite the following in your publications when using *squigulator*:
+
+> Gamaarachchi, H., Ferguson, J. M., Samarakoon, H., Liyanage, K., & Deveson, I. W. (2023). Squigulator: simulation of nanopore sequencing signal data with tunable noise parameters. bioRxiv, 2023-05.
+
+```
+@article{gamaarachchi2023squigulator,
+  title={Squigulator: simulation of nanopore sequencing signal data with tunable noise parameters},
+  author={Gamaarachchi, Hasindu and Ferguson, James M and Samarakoon, Hiruna and Liyanage, Kisaru and Deveson, Ira W},
+  journal={bioRxiv},
+  pages={2023--05},
+  year={2023},
+  publisher={Cold Spring Harbor Laboratory}
+}
+```
 
 ## Background story
 
@@ -23,7 +42,7 @@ After getting the basic *ssssim* implemented in ~8 hours and successfully baseca
 For x86-64 Linux, you can use the precompiled binaries under [releases](https://github.com/hasindu2008/squigulator/releases):
 
 ```
-VERSION=0.2.0-dirty
+VERSION=0.3.0-dirty
 wget https://github.com/hasindu2008/squigulator/releases/download/v${VERSION}/squigulator-v${VERSION}-x86_64-linux-binaries.tar.gz
 tar xf squigulator-v${VERSION}-x86_64-linux-binaries.tar.gz  && cd squigulator-v${VERSION}
 ./squigulator --help
@@ -52,13 +71,15 @@ The simplest command to generate reads:
 squigulator [OPTIONS] ref_genome.fa -o out_signal.blow5 -n NUM_READS
 ```
 
-By default, DNA PromethION reads (R9.4.1) will be simulated. Specify the `-x STR` option to set a different profile from the following available pre-sets (inspired by pre-sets in [Minimap2](https://github.com/lh3/minimap2)).
+By default, DNA PromethION reads (R9.4.1) will be simulated. Specify the `-x STR` option to set a different profile from the following available pre-sets (see [here](docs/profile.md) for more info).
 - `dna-r9-min`: genomic DNA on MinION R9.4.1 flowcells
 - `dna-r9-prom`: genomic DNA on PromethION R9.4.1 flowcells
 - `rna-r9-min`: direct RNA on MinION R9.4.1 flowcells
 - `rna-r9-prom`: direct RNA on PromethION R9.4.1 flowcells
 - `dna-r10-min`: genomic DNA on MinION R10.4.1 flowcells
 - `dna-r10-prom`: genomic DNA on PromethION R10.4.1 flowcells
+- `rna004-min`: direct RNA on MinION RNA004 flowcells
+- `rna004-prom`: direct RNA on promethION RNA004 flowcells
 
 If a genomic DNA profile is selected, the input reference must be the **reference genome in *FASTA* format**. *squigulator* will randomly sample the genome from a uniform distribution and generate reads whose lengths are from a gamma distribution (based on `-r`). If a direct RNA profile is selected, the input reference must be the **transcriptome in *FASTA* format**. For RNA, *squigulator* will randomly pick transcripts from a uniform distribution and the whole transcript length is simulated.
 

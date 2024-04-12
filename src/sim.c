@@ -140,11 +140,11 @@ profile_t minion_rna004_rna_prof = {
     .digitisation = 8192,
     .sample_rate = 4000,
     .bps = 130,
-    .range = 1536.598389,
-    .offset_mean=13.380569389019,
-    .offset_std=16.311471649012,
-    .median_before_mean=202.15407438804,
-    .median_before_std=13.406139241768,
+    .range = 1437.976685,
+    .offset_mean=12.47686423863,
+    .offset_std=10.442126577137,
+    .median_before_mean=205.08496731088,
+    .median_before_std=8.6671292866233,
     .dwell_mean=31.0, //this must be sample_rate/bps for now
     .dwell_std=0.0
 };
@@ -172,8 +172,7 @@ static inline profile_t set_profile(char *prof_name, opt_t *opt){
         opt->flag |= SQ_R10;
         return minion_r10_dna_prof;
     }else if(strcmp(prof_name, "rna004-min") == 0){
-        ERROR("%s","Parameters not determined for rna004 MinION. Please share some data!");
-        exit(EXIT_FAILURE);
+        WARNING("%s","Parameters and models for rna004-min are still crude. If you have good IVT data, please share!");
         opt->flag |= SQ_R10;
         opt->flag |= SQ_RNA;
         return minion_rna004_rna_prof;

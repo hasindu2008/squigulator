@@ -15,7 +15,7 @@
 #include "model.h"
 #include "error.h"
 
-//#define DEBUG_MODEL_PRINT 1
+##define DEBUG_MODEL_PRINT 1
 
 uint32_t eval_num_kmer(uint32_t kmer_size,uint32_t type){
 
@@ -97,13 +97,13 @@ uint32_t read_model(model_t* model, const char* file, uint32_t type) {
             }
 
             int32_t ret =
-            sscanf(buffer, "%12s\t%f\t%f", kmer, &model[num_k].level_mean, &model[num_k].level_stdv);
+            sscanf(buffer, "%12s\t%f\t%f\t%f\t%f", kmer, &model[num_k].level_mean, &model[num_k].level_stdv, &model[num_k].dwell_mean, &model[num_k].dwell_stdv);
 
             #ifdef CACHED_LOG
                 model[num_k].level_log_stdv=log(model[num_k].level_stdv);
             #endif
             num_k++;
-            if (ret != 3) {
+            if (ret != 5) {
                 ERROR("File %s is corrupted at line %d. K-mer size %d is not consistent with that in header %d.", file, line_no, (int)strlen(kmer), (int)kmer_size);
                 exit(EXIT_FAILURE);
             }
@@ -194,7 +194,7 @@ uint32_t set_model(model_t* model, uint32_t model_id) {
     fprintf(stderr, "level_mean\tlevel_stdv\tdwell_mean\tdwell_stdv\n");
     for (i = 0; i < num_kmer; i++) {
         fprintf(stderr, "%f\t%f\t%f\t%f\n", model[i].level_mean,
-                model[i].level_stdv, 0.0, 0.0);
+                model[i].level_stdv, model[i].dwell_mean, model[i].dwell_stdv);
     }
 #endif
 

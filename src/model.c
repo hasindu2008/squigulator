@@ -15,7 +15,7 @@
 #include "model.h"
 #include "error.h"
 
-##define DEBUG_MODEL_PRINT 1
+//#define DEBUG_MODEL_PRINT 1
 
 uint32_t eval_num_kmer(uint32_t kmer_size,uint32_t type){
 

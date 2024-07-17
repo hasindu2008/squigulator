@@ -38,6 +38,7 @@
 #define SQ_PAF_REF 0x080 //in paf output, use ref as target
 #define SQ_TRANS_TRUNC 0x100 //trans-trunc
 #define SQ_CDNA 0x200 //CDNA
+#define SQ_ONT 0x400 //ont friendly
 
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold

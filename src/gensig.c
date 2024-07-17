@@ -37,7 +37,7 @@ char *attach_prefix(core_t *core, const char *read, int32_t *len, aln_t *aln);
 void gen_prefix_dna(int16_t *raw_signal, int64_t* n, int64_t *c, profile_t *profile, double offset);
 int16_t *gen_prefix_rna(core_t *core, int16_t *raw_signal, int64_t* n, int64_t *c, double offset, int tid, aln_t *aln);
 
-void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10){
+void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10, double sample_frequency){
 
     slow5_hdr_t *header=sp->header;
 
@@ -69,6 +69,11 @@ void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10){
     //add another header group attribute called sequencing_kit
     if (slow5_hdr_add("sequencing_kit", header) < 0){
         ERROR("%s","Error adding sequencing_kit attribute");
+        exit(EXIT_FAILURE);
+    }
+    //add another header group attribute called sample_frequency
+    if (slow5_hdr_add("sample_frequency", header) < 0){
+        ERROR("%s","Error adding sample_frequency attribute");
         exit(EXIT_FAILURE);
     }
 
@@ -109,9 +114,21 @@ void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10){
         ERROR("%s","Error setting sequencing_kit attribute in read group 0");
         exit(EXIT_FAILURE);
     }
+    //sample_frequency
+    if(sample_frequency<=0 || sample_frequency>1000000000){
+        ERROR("%s","A weird sample frequency. It should be between 0 and 1000000000 Hz");
+        exit(EXIT_FAILURE);
+    }
+    char buffer[100];
+    sprintf(buffer, "%d", (int)sample_frequency);
+    if (slow5_hdr_set("sample_frequency", buffer, 0, header) < 0){
+        ERROR("%s","Error setting sample_frequency attribute in read group 0");
+        exit(EXIT_FAILURE);
+    }
+
 }
 
-void set_header_aux_fields(slow5_file_t *sp){
+void set_header_aux_fields(slow5_file_t *sp, int8_t ont_friendly){
 
     //add auxilliary field: channel number
     if (slow5_aux_add("channel_number", SLOW5_STRING, sp->header) < 0){
@@ -140,6 +157,15 @@ void set_header_aux_fields(slow5_file_t *sp){
         ERROR("%s","Error adding start_time auxilliary field\n");
         exit(EXIT_FAILURE);
     }
+    //add auxilliary field: end_reason
+    if(ont_friendly){
+        const char *enum_labels[]={"unknown","partial","mux_change","unblock_mux_change","data_service_unblock_mux_change","signal_positive","signal_negative"};
+        uint8_t num_labels = 7;
+        if (slow5_aux_add_enum("end_reason", enum_labels, num_labels, sp->header) < 0){
+            ERROR("%s","Error adding end_reason auxilliary field\n");
+            exit(EXIT_FAILURE);
+        }
+    }
 }
 
 void set_record_primary_fields(profile_t *profile, slow5_rec_t *slow5_record, char *read_id, double offset, int64_t len_raw_signal, int16_t *raw_signal){
@@ -156,7 +182,7 @@ void set_record_primary_fields(profile_t *profile, slow5_rec_t *slow5_record, ch
 
 }
 
-void set_record_aux_fields(slow5_rec_t *slow5_record, slow5_file_t *sp, double median_before, int32_t read_number, uint64_t start_time){
+void set_record_aux_fields(slow5_rec_t *slow5_record, slow5_file_t *sp, double median_before, int32_t read_number, uint64_t start_time, int8_t ont_friendly){
 
     const char *channel_number = "0";
     uint8_t start_mux = 0;
@@ -184,6 +210,14 @@ void set_record_aux_fields(slow5_rec_t *slow5_record, slow5_file_t *sp, double m
     if(slow5_aux_set(slow5_record, "start_time", &start_time, sp->header) < 0){
         ERROR("%s","Error setting start_time auxilliary field\n");
         exit(EXIT_FAILURE);
+    }
+
+    if(ont_friendly){
+        uint8_t end_reason = 0;
+        if(slow5_aux_set(slow5_record, "end_reason", &end_reason, sp->header) < 0){
+            ERROR("%s","Error setting end_reason auxilliary field\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
 }

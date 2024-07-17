@@ -83,3 +83,5 @@ identityrna.sh $REF_GENCODE new.fastq > a.acc 2>> a.log || die "identitydna fail
 cat a.acc
 CHECK_ACC 0.77 a.acc
 REMOVE_TMP
+
+# CDNA

@@ -127,6 +127,10 @@ diff -q test/ont_friendly.exp a.slow5 || die "diff failed"
 ex ./squigulator -x dna-r10-min -o a.slow5 -n 1 --seed 1 -t1 test/rnasequin_sequences_2.4.fa --digitisation 4096 --sample-rate 10000 --range 300 --offset-mean -1000 --offset-std 0 --median-before-mean 100 --median-before-std 0
 diff -q test/dev.exp a.slow5 || die "diff failed"
 
+#meth r9
+ex ./squigulator -x dna-r9-prom -o a.slow5 --seed 1 -t1 -n 2 -r 29000 test/nCoV-2019.reference.fasta --meth-freq test/mfreq.tsv
+diff -q test/r9_mfreq.exp a.slow5  || die "diff failed"
+
 # threads and batch size
 redundancy_check () {
     N=$(grep -v ^[@#] a.slow5 | cut -f ${1}  | sort | uniq -c | sort -nr -k1,1 | head -1 | awk '{print $1}')

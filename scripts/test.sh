@@ -61,7 +61,6 @@ echo "--prefix=no"
 ex ./squigulator -x rna-r9-prom test/rnasequin_sequences_2.4.fa -o a.slow5 -n 2 --seed 1 --dwell-std 3.0 -t1 || die "Running the tool failed"
 diff -q test/rna_prefixno_slow5.exp a.slow5 || die "diff failed"
 
-
 # full contigs
 echo "--full-contigs"
 ex ./squigulator test/nCoV-2019.reference.fasta -o a.slow5 --seed 1 --full-contigs  --dwell-std 5.0 -t1 || die "Running the tool failed"
@@ -117,6 +116,12 @@ ex ./squigulator -x dna-r10-min -o a.slow5 -n 1 --seed 1 --dwell-std 3.0 -t1 tes
 diff -q test/cdna.exp a.slow5 || die "diff failed"
 
 # trans count
+ex ./squigulator -x rna004-prom -o a.slow5 -n 3 --seed 3 --trans-count test/sequin_count.tsv -t1 test/rnasequin_sequences_2.4.fa
+diff -q test/trans_count.exp a.slow5 || die "diff failed"
+
+# trans count cdna
+ex ./squigulator -x dna-r10-min -o a.slow5 -n 3 --seed 3 --trans-count test/sequin_count.tsv -t1 test/rnasequin_sequences_2.4.fa --cdna
+diff -q test/trans_count_cdna.exp a.slow5 || die "diff failed"
 
 # trans trunc
 ex ./squigulator -x rna004-prom -o a.slow5 -n 1 --seed 1 --trans-trunc -t1 test/rnasequin_sequences_2.4.fa
@@ -133,6 +138,13 @@ diff -q test/dev.exp a.slow5 || die "diff failed"
 #meth r9
 ex ./squigulator -x dna-r9-prom -o a.slow5 --seed 1 -t1 -n 2 -r 29000 test/nCoV-2019.reference.fasta --meth-freq test/mfreq.tsv
 diff -q test/r9_mfreq.exp a.slow5  || die "diff failed"
+# /install/buttery-eel-0.3.1+6.5.7/scripts/eel -i a.slow5 -o a.fastq --config  dna_r9.4.1_450bps_sup.cfg -x cuda:all
+# minimap2 -ax map-ont /genome/nCoV-2019.reference.fasta  a.fastq --secondary=no | samtools sort - -o a.bam && samtools index a.bam
+# f5c index a.fastq --slow5 a.slow5 && f5c call-methylation -r a.fastq  -g test/nCoV-2019.reference.fasta -b a.bam --slow5 a.slow5 -o meth.tsv && f5c meth-freq -i meth.tsv -s -o meth-freq.tsv
+
+#meth r10
+# ex ./squigulator -x dna-r9-prom -o a.slow5 --seed 1 -t1 -n 2 -r 29000 test/nCoV-2019.reference.fasta --meth-freq test/methfreq.tsv
+# diff -q test/r10_methfreq.exp a.slow5  || die "diff failed"
 
 # threads and batch size
 redundancy_check () {

@@ -6,6 +6,7 @@
 
 Reads directly extracted from the reference genome are simulated without any mutations/variants. If you want to have variants in your simulated data, you can first apply a set of variants to the reference using [bcftools](http://www.htslib.org/download/) and use that as the input to the *squigulator*.
 
+Puvlication: [https://doi.org/10.1101/gr.278730.123](https://genome.cshlp.org/content/34/5/778.full?sid=cd2c8aec-be46-4c9e-885c-8452ac069f64)
 Preprint: [https://www.biorxiv.org/content/10.1101/2023.05.09.539953v1](https://www.biorxiv.org/content/10.1101/2023.05.09.539953v1)<br/>
 SLOW5 ecosystem: [https://hasindu2008.github.io/slow5](https://hasindu2008.github.io/slow5)<br/>
 
@@ -18,7 +19,7 @@ SLOW5 ecosystem: [https://hasindu2008.github.io/slow5](https://hasindu2008.githu
 
 Please cite the following in your publications when using *squigulator*:
 
-> Gamaarachchi, H., Ferguson, J. M., Samarakoon, H., Liyanage, K., & Deveson, I. W. (2023). Squigulator: simulation of nanopore sequencing signal data with tunable noise parameters. bioRxiv, 2023-05.
+> Gamaarachchi, H., Ferguson, J. M., Samarakoon, H., Liyanage, K., & Deveson, I. W. (2024). Simulation of nanopore sequencing signal data with tunable parameters. Genome Research, 34(5), 778-783.
 
 ```
 @article{gamaarachchi2023squigulator,

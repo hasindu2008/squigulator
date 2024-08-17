@@ -16,7 +16,7 @@
 
 #define MAX_KMER_SIZE 9 //maximum k-mer size
 #define MAX_NUM_KMER 262144   //maximum number of k-mers in nucleotide model
-#define MAX_NUM_KMER_METH 15625 //maximum number of k-mers in methylated model
+#define MAX_NUM_KMER_METH 1953125 //maximum number of k-mers in methylated model
 
 //default model IDs
 #define MODEL_ID_DNA_R9_NUCLEOTIDE 1
@@ -24,6 +24,7 @@
 #define MODEL_ID_DNA_R10_NUCLEOTIDE 3
 #define MODEL_ID_RNA_RNA004_NUCLEOTIDE 4
 #define MODEL_ID_DNA_R9_CPG 5
+#define MODEL_ID_DNA_R10_CPG 6
 
 /*******************************************************
  * flags related to the user specified options (opt_t) *

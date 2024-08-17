@@ -85,3 +85,10 @@ CHECK_ACC 0.77 a.acc
 REMOVE_TMP
 
 # CDNA
+
+# meth r9
+
+# meth r10
+
+# RNA trasn count
+

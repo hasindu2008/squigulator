@@ -12,6 +12,7 @@ endif
 BINARY = squigulator
 OBJ = $(BUILD_DIR)/main.o \
       $(BUILD_DIR)/model.o \
+	  $(BUILD_DIR)/methmodel.o \
 	  $(BUILD_DIR)/misc.o \
 	  $(BUILD_DIR)/sim.o \
 	  $(BUILD_DIR)/thread.o \
@@ -41,6 +42,9 @@ $(BUILD_DIR)/main.o: src/main.c $(HEADERS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/model.o: src/model.c src/model.h  src/misc.h
+	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+
+$(BUILD_DIR)/methmodel.o: src/methmodel.c src/model.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/thread.o: src/thread.c

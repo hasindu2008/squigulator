@@ -730,7 +730,7 @@ static void print_help(FILE *fp_help, opt_t opt, profile_t p, int64_t nreads) {
     fprintf(fp_help,"   --ideal                    generate ideal signals with no noise\n");
     fprintf(fp_help,"   --version                  print version\n");
     fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",(int)get_log_level());
-    fprintf(fp_help,"   --full-contigs             generate signals for complete contigs (incompatible with -n, -r and -n)\n");
+    fprintf(fp_help,"   --full-contigs             generate signals for complete contigs/sequences in the input (incompatible with -n, -r & -n)\n");
 
     fprintf(fp_help,"\nadvanced options:\n");
     fprintf(fp_help,"   -K INT                     batch size (max number of reads created at once) [%d]\n",opt.batch_size);

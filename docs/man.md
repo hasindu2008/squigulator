@@ -10,7 +10,7 @@ Basic options in *squigulator* are as below:
 - `-t INT`: Number of threads [default: 8]
 - `-h`:  help
 - `--ideal`: To generate perfect signals with no noise. See example [here](img/ideal.svg).
-- `--full-contigs`: generate a complete raw signal per each contig in the input reference genome (incompatible with `-n` and `-r`).
+- `--full-contigs`: generate a complete raw signal per each contig in the input reference genome or each sequence in the input sequences (incompatible with `-n` and `-r`).
 - `--version`: print version
 - `--verbose INT`:  verbosity level [default: 4]
 

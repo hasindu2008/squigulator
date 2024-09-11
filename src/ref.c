@@ -316,7 +316,7 @@ void load_meth_freq(const char *meth_freq, ref_t *ref){
         int ref_idx = get_ref_idx(name, ref);
         //fprintf(stderr,"Refidx %d\n",ref_idx);
         if(ref_idx < 0){
-            ERROR("There was no such chromosome in the reference. Check line %d value %s", line, name);
+            ERROR("There was no such chromosome in the reference. Check line %d value %s of the input methy-freq file.", line, name);
             exit(EXIT_FAILURE);
         }
         char *position = strtok(NULL, "\t");
@@ -324,15 +324,15 @@ void load_meth_freq(const char *meth_freq, ref_t *ref){
         int32_t pos = atoi(position);
         //fprintf(stderr,"%s,%d\n",position,pos);
         if(pos < 0){
-            ERROR("chromosome position cannot be negative. Check line %d value %d",line,pos);
+            ERROR("Chromosome position cannot be negative. Check line %d value %d of the input methy-freq file.",line,pos);
             exit(EXIT_FAILURE);
         } else if (pos >= ref->ref_lengths[ref_idx]){
-            ERROR("chromosome %s position must be less than the length %d. Check line %d value %d", ref->ref_names[ref_idx], ref->ref_lengths[ref_idx], line, pos);
+            ERROR("Chromosome %s position must be less than the length %d. Check line %d value %d of the input methy-freq file.", ref->ref_names[ref_idx], ref->ref_lengths[ref_idx], line, pos);
             exit(EXIT_FAILURE);
         }
         char c = ref->ref_seq[ref_idx][pos];
         if(!(c=='C' || c=='c')){
-            ERROR("The chrsomsome %s pos %d n the refrence was a %c. How can it be methylated C? Check line %d",name,pos,c,line);
+            ERROR("The chromosome %s position %d in the reference was a %c. How can it be methylated C? Check line %d of the input methy-freq file.",name,pos,c,line);
             exit(EXIT_FAILURE);
         }
 
@@ -340,7 +340,7 @@ void load_meth_freq(const char *meth_freq, ref_t *ref){
         check_meth_line(frequency, meth_freq);
         float freq = atof(frequency);
         if(freq<0 || freq >1){
-            ERROR("Methylation frequency must be between 0 to 1. Check line %d value %f",line, freq);
+            ERROR("Methylation frequency must be between 0 to 1. Check line %d value %f of the input methy-freq file.",line, freq);
             exit(EXIT_FAILURE);
         }
         uint8_t f = roundf(freq * 255);

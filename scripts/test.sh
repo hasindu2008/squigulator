@@ -144,7 +144,7 @@ diff -q test/r9_mfreq.exp a.slow5  || die "diff failed"
 
 #meth r10
 ex ./squigulator -x dna-r10-prom -o a.slow5 --seed 1 -t1 -n 2 -r 29000 test/nCoV-2019.reference.fasta --meth-freq test/methfreq.tsv
-# diff -q test/r10_methfreq.exp a.slow5  || die "diff failed"
+diff -q test/r10_methfreq.exp a.slow5  || die "diff failed"
 # /install/buttery-eel-0.3.1+6.5.7/scripts/eel -i a.slow5 -o a.fastq --config  dna_r10.4.1_e8.2_400bps_5khz_sup.cfg -x cuda:all
 # minimap2 -ax map-ont /genome/nCoV-2019.reference.fasta  a.fastq --secondary=no | samtools sort - -o a.bam && samtools index a.bam
 # f5c index a.fastq --slow5 a.slow5 && f5c call-methylation -r a.fastq  -g test/nCoV-2019.reference.fasta -b a.bam --slow5 a.slow5 -o meth.tsv && f5c meth-freq -i meth.tsv -s -o meth-freq.tsv

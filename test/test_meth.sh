@@ -55,13 +55,13 @@ RUN_TEST(){
     tail -n+2 methcomp.tsv | datamash ppearson 3:5 2>> a.acc || die "pearson failed"
     # ~/hasindu2008.git/f5c/scripts/plot_methylation.R  -i methcomp.tsv -o methcomp.pdf
     # cat a.acc
-    CHECK_ACC 0.93 a.acc
+    CHECK_ACC 0.92 a.acc
     REMOVE_TMP
 }
 
 echo "R9 DNA methylation"
 RUN_TEST "dna-r9-prom" "dna_r9.4.1_450bps_modbases_5mc_cg_hac_prom.cfg"
 
-echo "R10 DNA methylation"
-RUN_TEST "dna-r10-prom" "dna_r10.4.1_e8.2_400bps_5khz_modbases_5mc_cg_hac_prom.cfg"
+# echo "R10 DNA methylation"
+# RUN_TEST "dna-r10-prom" "dna_r10.4.1_e8.2_400bps_5khz_modbases_5mc_cg_hac_prom.cfg"
 

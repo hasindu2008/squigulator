@@ -308,6 +308,8 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
             }
 
             if(opt.flag & SQ_R10){
+                ERROR("%s","Methylation simulation is not yet supported for R10 data.");
+                exit(EXIT_FAILURE);
                 INFO("%s","builtin DNA R10 cpg model loaded");
                 kmer_size_meth=set_model(core->cpgmodel, MODEL_ID_DNA_R10_CPG);
                 WARNING("%s","Methylation simulation for R10 is still crude. If you have good control data, please share!");

@@ -58,7 +58,7 @@ RUN_TEST(){
     tail -n+2 methcomp.tsv | datamash ppearson 3:5 > a.acc || die "pearson failed"
     # ~/hasindu2008.git/f5c/scripts/plot_methylation.R  -i methcomp.tsv -o methcomp.pdf
     cat a.acc
-    CHECK_ACC 0.92 a.acc
+    CHECK_ACC 0.93 a.acc
     REMOVE_TMP
 }
 

@@ -50,7 +50,7 @@ RUN_REST(){
 }
 
 PROF=rna004-prom
-MODEL=rna_rp4_130bps_hac.cfg
+MODEL=rna_rp4_130bps_sup.cfg
 ./squigulator ${REF_GENCODE} -x ${PROF}  -t 20 -n 500000 -o new.blow5 --trans-count count.tsv 2> a.log || die "squigulator failed"
 /install/buttery-eel-0.4.2+dorado7.2.13/scripts/eel  -i new.blow5 --config ${MODEL} --device cuda:all -o new.fastq  &>> a.log || die "eel failed"
 RUN_REST

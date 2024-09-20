@@ -6,7 +6,7 @@
 
 Reads directly extracted from the reference genome are simulated without any mutations/variants. If you want to have variants in your simulated data, you can first apply a set of variants to the reference using [bcftools](http://www.htslib.org/download/) and use that as the input to the *squigulator*.
 
-Publication: [https://doi.org/10.1101/gr.278730.123](https://genome.cshlp.org/content/34/5/778.full?sid=cd2c8aec-be46-4c9e-885c-8452ac069f64)
+Publication: [https://doi.org/10.1101/gr.278730.123](https://genome.cshlp.org/content/34/5/778.full?sid=cd2c8aec-be46-4c9e-885c-8452ac069f64) <br/>
 Preprint: [https://www.biorxiv.org/content/10.1101/2023.05.09.539953v1](https://www.biorxiv.org/content/10.1101/2023.05.09.539953v1)<br/>
 SLOW5 ecosystem: [https://hasindu2008.github.io/slow5](https://hasindu2008.github.io/slow5)<br/>
 

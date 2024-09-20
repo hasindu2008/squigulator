@@ -84,7 +84,7 @@ cat a.acc
 CHECK_ACC 0.77 a.acc
 REMOVE_TMP
 
-# CDNA R9
+echo "CDNA R9"
 ./squigulator -x dna-r9-prom $REF_GENCODE -o new.blow5 --cdna 2> a.log || die "squigulator failed"
 eel  -i new.blow5 --config dna_r9.4.1_450bps_sup.cfg --device cuda:all -o new.fastq &>> a.log || die "eel failed"
 identitydna.sh $REF_GENCODE new.fastq > a.acc 2>> a.log || die "identitycdna failed"

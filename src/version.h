@@ -1,1 +1,1 @@
-#define SQ_VERSION "0.4.0"
+#define SQ_VERSION "0.4.0-dirty"

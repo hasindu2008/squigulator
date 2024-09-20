@@ -16,13 +16,15 @@
 
 #define MAX_KMER_SIZE 9 //maximum k-mer size
 #define MAX_NUM_KMER 262144   //maximum number of k-mers in nucleotide model
-#define MAX_NUM_KMER_METH 15625 //maximum number of k-mers in methylated model
+#define MAX_NUM_KMER_METH 1953125 //maximum number of k-mers in methylated model
 
 //default model IDs
 #define MODEL_ID_DNA_R9_NUCLEOTIDE 1
 #define MODEL_ID_RNA_R9_NUCLEOTIDE 2
 #define MODEL_ID_DNA_R10_NUCLEOTIDE 3
 #define MODEL_ID_RNA_RNA004_NUCLEOTIDE 4
+#define MODEL_ID_DNA_R9_CPG 5
+#define MODEL_ID_DNA_R10_CPG 6
 
 /*******************************************************
  * flags related to the user specified options (opt_t) *
@@ -37,8 +39,7 @@
 #define SQ_PAF_REF 0x080 //in paf output, use ref as target
 #define SQ_TRANS_TRUNC 0x100 //trans-trunc
 #define SQ_CDNA 0x200 //CDNA
-
-
+#define SQ_ONT 0x400 //ont friendly
 
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold
@@ -80,6 +81,9 @@ typedef struct{
     int32_t batch_size; //K
 
     float amp_noise;
+
+    const char *meth_freq;
+    const char *meth_model_file;
 } opt_t;
 
 typedef struct {
@@ -89,6 +93,7 @@ typedef struct {
     grng_t **rand_rlen;
     nrng_t **rand_offset;
     nrng_t **rand_median_before;
+    int64_t *rand_meth;
 
     profile_t profile;
     model_t *model;
@@ -96,6 +101,7 @@ typedef struct {
     uint32_t kmer_size;
     uint32_t num_kmer;
 
+    model_t *cpgmodel;
     //opt
     opt_t opt;
 

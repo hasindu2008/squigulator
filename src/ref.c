@@ -30,6 +30,7 @@ SOFTWARE.
 
 #define _XOPEN_SOURCE 700
 #include <zlib.h>
+#include <math.h>
 #include "ref.h"
 #include "error.h"
 #include "str.h"
@@ -104,6 +105,7 @@ ref_t *load_ref(const char *genome){
 
     ref->num_ref = i;
     ref->trans_counts = NULL;
+    ref->ref_meth = NULL;
 
     kseq_destroy(seq);
     gzclose(fp);
@@ -125,9 +127,14 @@ void free_ref_sim(ref_t *ref){
     for(int i=0;i<ref->num_ref;i++){
         free(ref->ref_names[i]);
         free(ref->ref_seq[i]);
+        if (ref->ref_meth) free(ref->ref_meth[i]);
     }
     if(ref->trans_counts != NULL){
         free_trans_count(ref->trans_counts);
+    }
+
+    if(ref->ref_meth != NULL){
+        free(ref->ref_meth);
     }
 
     free(ref->ref_lengths);
@@ -263,4 +270,92 @@ void load_trans_count(const char *trans_count, ref_t *ref){
 
     return;
 
+}
+
+static inline int get_ref_idx(const char *name, ref_t *ref){
+    for(int i=0; i< ref->num_ref; i++){
+        if(strcmp(ref->ref_names[i],name)==0){
+            return i;
+        }
+    }
+    return -1;
+}
+
+static inline void check_meth_line(void *ptr, const char *file){
+    if(ptr == NULL){
+        ERROR("Invalid format in file %s. Each line should have three tab separated values: col1: chromosome, col2: 0-based pos; col3: methylation frequency", file);
+        exit(EXIT_FAILURE);
+    }
+}
+
+void load_meth_freq(const char *meth_freq, ref_t *ref){
+
+    ref->ref_meth = calloc(ref->num_ref, sizeof(uint8_t *));
+    MALLOC_CHK(ref->ref_meth);
+
+    FILE *fp = fopen(meth_freq, "r");
+    F_CHK(fp, meth_freq);
+
+    //buffers for getline
+    char* buffer = (char*)malloc(sizeof(char) * (1000));
+    MALLOC_CHK(buffer);
+    size_t bufferSize = 1000;
+    ssize_t readlinebytes = 0;
+
+    int line = 0;
+    while ((readlinebytes = getline(&buffer, &bufferSize, fp)) != -1) {
+        if(buffer[0] == '#'){
+            line++;
+            continue;
+        }
+        //fprintf(stderr,"%s\n",buffer);
+
+
+        char *name = strtok(buffer, "\t");
+        check_meth_line(name, meth_freq);
+        int ref_idx = get_ref_idx(name, ref);
+        //fprintf(stderr,"Refidx %d\n",ref_idx);
+        if(ref_idx < 0){
+            ERROR("There was no such chromosome in the reference. Check line %d value %s of the input methy-freq file.", line, name);
+            exit(EXIT_FAILURE);
+        }
+        char *position = strtok(NULL, "\t");
+        check_meth_line(position, meth_freq);
+        int32_t pos = atoi(position);
+        //fprintf(stderr,"%s,%d\n",position,pos);
+        if(pos < 0){
+            ERROR("Chromosome position cannot be negative. Check line %d value %d of the input methy-freq file.",line,pos);
+            exit(EXIT_FAILURE);
+        } else if (pos >= ref->ref_lengths[ref_idx]){
+            ERROR("Chromosome %s position must be less than the length %d. Check line %d value %d of the input methy-freq file.", ref->ref_names[ref_idx], ref->ref_lengths[ref_idx], line, pos);
+            exit(EXIT_FAILURE);
+        }
+        char c = ref->ref_seq[ref_idx][pos];
+        if(!(c=='C' || c=='c')){
+            ERROR("The chromosome %s position %d in the reference was a %c. How can it be methylated C? Check line %d of the input methy-freq file.",name,pos,c,line);
+            exit(EXIT_FAILURE);
+        }
+
+        char *frequency = strtok(NULL, "\t");
+        check_meth_line(frequency, meth_freq);
+        float freq = atof(frequency);
+        if(freq<0 || freq >1){
+            ERROR("Methylation frequency must be between 0 to 1. Check line %d value %f of the input methy-freq file.",line, freq);
+            exit(EXIT_FAILURE);
+        }
+        uint8_t f = roundf(freq * 255);
+        if(ref->ref_meth[ref_idx]==NULL){
+            ref->ref_meth[ref_idx] = calloc(ref->ref_lengths[ref_idx], sizeof(uint8_t));
+            MALLOC_CHK(ref->ref_meth[ref_idx]);
+        }
+        ref->ref_meth[ref_idx][pos] = f;
+
+        line ++;
+        //fprintf(stderr,"%s,%d,%f,%d\n",name,pos,freq,f);
+
+    }
+
+    free(buffer);
+    fclose(fp);
+    return;
 }

@@ -42,10 +42,10 @@ SOFTWARE.
 #include "error.h"
 #include "misc.h"
 
-void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10);
-void set_header_aux_fields(slow5_file_t *sp);
+void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10, double sample_frequency);
+void set_header_aux_fields(slow5_file_t *sp, int8_t ont_friendly);
 void set_record_primary_fields(profile_t *profile, slow5_rec_t *slow5_record, char *read_id, double offset, int64_t len_raw_signal, int16_t *raw_signal);
-void set_record_aux_fields(slow5_rec_t *slow5_record, slow5_file_t *sp, double median_before, int32_t read_number, uint64_t start_time);
+void set_record_aux_fields(slow5_rec_t *slow5_record, slow5_file_t *sp, double median_before, int32_t read_number, uint64_t start_time, int8_t ont_friendly);
 uint32_t read_model(model_t* model, const char* file, uint32_t type);
 uint32_t set_model(model_t* model, uint32_t model_id);
 
@@ -140,11 +140,11 @@ profile_t minion_rna004_rna_prof = {
     .digitisation = 8192,
     .sample_rate = 4000,
     .bps = 130,
-    .range = 1536.598389,
-    .offset_mean=13.380569389019,
-    .offset_std=16.311471649012,
-    .median_before_mean=202.15407438804,
-    .median_before_std=13.406139241768,
+    .range = 1437.976685,
+    .offset_mean=12.47686423863,
+    .offset_std=10.442126577137,
+    .median_before_mean=205.08496731088,
+    .median_before_std=8.6671292866233,
     .dwell_mean=31.0, //this must be sample_rate/bps for now
     .dwell_std=0.0
 };
@@ -172,8 +172,7 @@ static inline profile_t set_profile(char *prof_name, opt_t *opt){
         opt->flag |= SQ_R10;
         return minion_r10_dna_prof;
     }else if(strcmp(prof_name, "rna004-min") == 0){
-        ERROR("%s","Parameters not determined for rna004 MinION. Please share some data!");
-        exit(EXIT_FAILURE);
+        WARNING("%s","Parameters and models for rna004-min are still crude. If you have good IVT data, please share!");
         opt->flag |= SQ_R10;
         opt->flag |= SQ_RNA;
         return minion_rna004_rna_prof;
@@ -209,6 +208,8 @@ static void init_opt(opt_t *opt){
     opt->num_thread = 8;
     opt->batch_size = 1000;
     opt->amp_noise = 1;
+    opt->meth_model_file = NULL;
+    opt->meth_freq = NULL;
 }
 
 static void init_rand(core_t *core){
@@ -227,6 +228,13 @@ static void init_rand(core_t *core){
     core->rand_median_before = (nrng_t **) malloc(t*sizeof(nrng_t *));  MALLOC_CHK(core->rand_median_before);
     core->kmer_gen = (nrng_t ***) malloc(t*sizeof(nrng_t **));          MALLOC_CHK(core->kmer_gen);
 
+    if(core->opt.meth_freq){
+        m = core->cpgmodel;
+        core->rand_meth = (int64_t *) malloc(t*sizeof(int64_t));         MALLOC_CHK(core->rand_meth);
+    } else {
+        core->rand_meth = NULL;
+    }
+
     int64_t seed = opt.seed;
     for(int i=0; i<t; i++){
         core->ref_pos[i] = seed;
@@ -241,6 +249,10 @@ static void init_rand(core_t *core){
             core->kmer_gen[i][j] = init_nrng(seed+j, m[j].level_mean, m[j].level_stdv*opt.amp_noise);
         }
 
+        if(core->opt.meth_freq){
+            core->rand_meth[i] = seed+6;
+        }
+
         seed += (n+10);
     }
 }
@@ -252,6 +264,7 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
     core->profile = p;
     core->model = (model_t*)malloc(sizeof(model_t) * MAX_NUM_KMER); //todo not very memory efficient - do dynamically
     MALLOC_CHK(core->model);
+
     uint32_t k = 0;
     if (opt.model_file) {
         k=read_model(core->model, opt.model_file, MODEL_TYPE_NUCLEOTIDE);
@@ -280,12 +293,51 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
     core->kmer_size = k;
     core->num_kmer = (uint32_t)(1 << 2*k);
 
+    uint32_t kmer_size_meth=0;
+    if(opt.meth_freq){
+        core->cpgmodel = (model_t*)malloc(sizeof(model_t) * MAX_NUM_KMER_METH);
+        MALLOC_CHK(core->cpgmodel);
+
+        if (opt.meth_model_file) {
+            kmer_size_meth=read_model(core->cpgmodel, opt.meth_model_file, MODEL_TYPE_METH);
+        } else {
+
+            if(opt.flag & SQ_RNA){
+                ERROR("%s","Methylation simulation is not supported for RNA data.");
+                exit(EXIT_FAILURE);
+            }
+
+            if(opt.flag & SQ_R10){
+                ERROR("%s","Methylation simulation is not yet supported for R10 data.");
+                exit(EXIT_FAILURE);
+                INFO("%s","builtin DNA R10 cpg model loaded");
+                kmer_size_meth=set_model(core->cpgmodel, MODEL_ID_DNA_R10_CPG);
+                WARNING("%s","Methylation simulation for R10 is still crude. If you have good control data, please share!");
+            } else {
+                INFO("%s","builtin DNA R9 cpg model loaded");
+                kmer_size_meth=set_model(core->cpgmodel, MODEL_ID_DNA_R9_CPG);
+            }
+        }
+        if(k != kmer_size_meth){
+            ERROR("The k-mer size of the nucleotide model (%d) and the methylation model (%d) should be the same.",k,kmer_size_meth);
+            exit(EXIT_FAILURE);
+        }
+        core->num_kmer = (uint32_t)pow(5,k);
+
+    } else {
+        core->cpgmodel = NULL;
+    }
+
+
     init_rand(core);
 
     core->ref = load_ref(refname);
     if(trans_count!=NULL){
         load_trans_count(trans_count,core->ref);
         assert((opt.flag & SQ_RNA) || (opt.flag & SQ_CDNA));
+    }
+    if(opt.meth_freq!=NULL){
+        load_meth_freq(opt.meth_freq, core->ref);
     }
 
     core->sp = slow5_open(output_file, "w");
@@ -294,8 +346,8 @@ static core_t *init_core(opt_t opt, profile_t p, char *refname, char *output_fil
         exit(EXIT_FAILURE);
     }
 
-    set_header_attributes(core->sp, opt.flag & SQ_RNA ? 1 : 0, opt.flag & SQ_R10 ? 1 : 0);
-    set_header_aux_fields(core->sp);
+    set_header_attributes(core->sp, opt.flag & SQ_RNA ? 1 : 0, opt.flag & SQ_R10 ? 1 : 0, p.sample_rate);
+    set_header_aux_fields(core->sp, opt.flag & SQ_ONT ? 1 : 0);
 
     if(slow5_hdr_write(core->sp) < 0){
         ERROR("%s","Error writing header!\n");
@@ -354,8 +406,12 @@ void free_core(core_t *core){
     free(core->rand_median_before);
     free(core->ref_pos);
     free(core->rand_strand);
+    if(core->opt.meth_freq){
+        free(core->rand_meth);
+    }
 
     free(core->model);
+    free(core->cpgmodel);
 
     if(core->fp_fasta){
         fclose(core->fp_fasta);
@@ -439,7 +495,13 @@ void free_db(db_t* db) {
     free(db);
 }
 
-
+void fake_uuid(char *read_id, int64_t num){
+    if(num>999999999999){
+        ERROR("Too many reads that my lazy fake uuid generator cannot handle %ld is too large. Open an issue and I will fix this",num);
+        exit(EXIT_FAILURE);
+    }
+    sprintf(read_id,"00000000-0000-0000-0000-%012d",(int)num);
+}
 
 
 //void gen_prefix_dna(int16_t *raw_signal, int64_t* n, int64_t *c, profile_t *profile, double offset);
@@ -501,7 +563,11 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
 
     char *read_id= (char *)malloc(sizeof(char)*(10000));
     MALLOC_CHK(read_id);
-    sprintf(read_id,"S1_%ld!%s!%d!%d!%c",core->total_reads+i+1, rid, ref_pos_st, ref_pos_end, strand);
+    if(opt.flag & SQ_ONT){
+        fake_uuid(read_id, core->total_reads+i+1);
+    } else {
+        sprintf(read_id,"S1_%ld!%s!%d!%d!%c",core->total_reads+i+1, rid, ref_pos_st, ref_pos_end, strand);
+    }
     if(core->fp_fasta){
         db->fasta[i] = (char *)malloc(sizeof(char)*(strlen(read_id)+strlen(seq)+10)); //+10 bit inefficent - for now
         MALLOC_CHK(db->fasta[i]);
@@ -535,7 +601,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
 
     int64_t n_samples = __sync_fetch_and_add(&core->n_samples, len_raw_signal);
     set_record_primary_fields(&core->profile, slow5_record, read_id, offset, len_raw_signal, raw_signal);
-    set_record_aux_fields(slow5_record, sp, median_before, core->total_reads+i, n_samples);
+    set_record_aux_fields(slow5_record, sp, median_before, core->total_reads+i, n_samples, opt.flag & SQ_ONT ? 1 : 0);
 
     //encode to a buffer
     if (slow5_encode(&db->mem_records[i], &db->mem_bytes[i], slow5_record, sp) < 0){
@@ -631,6 +697,9 @@ static struct option long_options[] = {
     {"trans-count", required_argument, 0, 0 },             //32 transcript count
     {"trans-trunc", required_argument, 0, 0 },             //33 transcript truncate
     {"cdna", no_argument, 0, 0 },                   //34 cdna
+    {"ont-friendly", required_argument, 0, 0},             //35 ont-friendly
+    {"meth-freq", required_argument, 0, 0 },                   //36 meth-freq
+    {"meth-model", required_argument, 0, 0 },                   //37 meth-model
     {0, 0, 0, 0}};
 
 
@@ -663,7 +732,7 @@ static void print_help(FILE *fp_help, opt_t opt, profile_t p, int64_t nreads) {
     fprintf(fp_help,"   --ideal                    generate ideal signals with no noise\n");
     fprintf(fp_help,"   --version                  print version\n");
     fprintf(fp_help,"   --verbose INT              verbosity level [%d]\n",(int)get_log_level());
-    fprintf(fp_help,"   --full-contigs             generate signals for complete contigs (incompatible with -n, -r and -n)\n");
+    fprintf(fp_help,"   --full-contigs             generate signals for complete contigs/sequences in the input (incompatible with -n, -r & -n)\n");
 
     fprintf(fp_help,"\nadvanced options:\n");
     fprintf(fp_help,"   -K INT                     batch size (max number of reads created at once) [%d]\n",opt.batch_size);
@@ -676,15 +745,16 @@ static void print_help(FILE *fp_help, opt_t opt, profile_t p, int64_t nreads) {
     fprintf(fp_help,"   --dwell-mean FLOAT         mean of number of signal samples per base [%.1f]\n",p.dwell_mean);
     fprintf(fp_help,"   --dwell-std FLOAT          standard deviation of number of signal samples per base [%.1f]\n",p.dwell_std);
     fprintf(fp_help,"   --bps INT                  translocation speed in bases per second (incompatible with --dwell-mean) [%ld]\n",(long)(p.sample_rate/p.dwell_mean));
-    fprintf(fp_help,"   --kmer-model FILE          custom nucleotide k-mer model file (format similar to https://github.com/hasindu2008/f5c/blob/master/test/r9-models/r9.4_450bps.nucleotide.6mer.template.model)\n");
     fprintf(fp_help,"   --prefix=yes|no            generate prefixes such as adaptor (and polya for RNA) [no]\n");
     fprintf(fp_help,"   --seed INT                 seed or random generators (if 0, will be autogenerated) [%ld]\n",opt.seed);
     fprintf(fp_help,"   --paf-ref                  in paf output, use the reference as the target instead of read (needs -c)\n");
-    fprintf(fp_help,"   --cdna                     generate cDNA reads (only valid with dna profiles and the reference must a transcriptome, experimental)\n");
-    fprintf(fp_help,"   --trans-count FILE         simulate relative abundance using specified tsv with transcript name & count  (only for direct-rna and cDNA, experimental)\n");
+    fprintf(fp_help,"   --cdna                     generate cDNA reads (only for dna profiles & the reference must a transcriptome, experimental)\n");
+    fprintf(fp_help,"   --trans-count FILE         simulate relative abundance using tsv file [transcript name, count]  (for direct-rna & cDNA, experimental)\n");
     fprintf(fp_help,"   --trans-trunc=yes/no       simulate transcript truncattion (only for direct-rna, experimental) [no]\n");
+    fprintf(fp_help,"   --ont-friendly=yes/no      generate fake uuid for readids and add a dummy end_reason [no]\n");
+    fprintf(fp_help,"   --meth-freq FILE           simulate CpG methylation using frequency tsv file [chr, 0-based pos, freq] (for DNA, experimental)\n");
 
-    fprintf(fp_help,"\ndeveloper options (not much tested yet):\n");
+    fprintf(fp_help,"\ndeveloper options (less tested):\n");
     fprintf(fp_help,"   --digitisation FLOAT       ADC digitisation [%.1f]\n",p.digitisation);
     fprintf(fp_help,"   --sample-rate FLOAT        ADC sampling rate [%.1f]\n",p.sample_rate);
     fprintf(fp_help,"   --range FLOAT              ADC range [%.1f]\n",p.range);
@@ -692,6 +762,10 @@ static void print_help(FILE *fp_help, opt_t opt, profile_t p, int64_t nreads) {
     fprintf(fp_help,"   --offset-std FLOAT         ADC offset standard deviation [%.1f]\n",p.offset_std);
     fprintf(fp_help,"   --median-before-mean FLOAT Median before mean [%.1f]\n",p.median_before_mean);
     fprintf(fp_help,"   --median-before-std FLOAT  Median before standard deviation [%.1f]\n",p.median_before_std);
+    fprintf(fp_help,"   --kmer-model FILE          custom nucleotide k-mer model file (format similar to f5c models)\n");
+    fprintf(fp_help,"   --meth-model FILE          custom methylation k-mer model file (format similar to f5c models)\n");
+    fprintf(fp_help,"\n");
+    fprintf(fp_help,"See the manual page on GitHub for more details, options and the format of input/output files.\n");
 
     if(fp_help == stdout){
         exit(EXIT_SUCCESS);
@@ -917,6 +991,14 @@ int sim_main(int argc, char* argv[], double realtime0) {
             opt_gvn.cdna = 1;
             opt.flag |= SQ_CDNA;
             WARNING("%s","Option --cdna is experimental. Please report any issues.")
+        } else if (c == 0 && longindex == 35){ //ont-friendly
+            yes_or_no(&opt, SQ_ONT, longindex, optarg, 1);
+        } else if (c == 0 && longindex == 36){ //meth freq
+            opt.meth_freq = optarg;
+            WARNING("%s","Option --meth-freq is experimental. Please report any issues.")
+        } else if (c == 0 && longindex == 37){ //meth model
+            opt.meth_model_file = optarg;
+            WARNING("%s","Option --meth-model is experimental. Please report any issues.")
         } else if (c == '?'){
             exit(EXIT_FAILURE);
         } else {

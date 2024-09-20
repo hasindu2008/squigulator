@@ -16,10 +16,12 @@ typedef struct{
     int num_ref;
     int64_t sum;
     trans_t *trans_counts;
+    uint8_t **ref_meth;
 } ref_t;
 
 ref_t *load_ref(const char *genome);
 void free_ref_sim(ref_t *ref);
 void load_trans_count(const char *trans_count, ref_t *ref);
+void load_meth_freq(const char *meth_freq, ref_t *ref);
 
 #endif

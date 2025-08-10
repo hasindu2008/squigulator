@@ -32,7 +32,7 @@ Advanced options are as below:
 - `--trans-count FILE`: simulate relative abundance using specified 2-column tsv with first column containing transcript name and the second containing the count. See the example at [test/sequin_count.tsv](test/sequin_count.tsv)  (only for direct-rna and cDNA, experimental). You may generate this using a dataset using minimap2, for example, `minimap2 -cx map-ont transcripts.fa  reads.fastq --secondary=no -t20 -uf | cut -f 6 | sort | uniq -c | awk '{print$2"\t"$1}'`.
 - `--trans-trunc=yes/no`: simulate transcript truncation (only for direct-rna, experimental) [default: no]
 - `--ont-friendly=yes/no`:   generate fake uuid for readids and add a dummy end_reason [default: no]
--- `--meth-freq FILE`: simulate CpG methylation using a frequency tsv file. The tsv file should have three columns, chr, 0-based pos, and methylation frequency. See the example at [test/mfreq.tsv](test/mfreq.tsv). (for DNA, experimental)
+- `--meth-freq FILE`: simulate CpG methylation using a frequency tsv file. The tsv file should have three columns, chr, 0-based pos, and methylation frequency. See the example at [test/mfreq.tsv](../test/mfreq.tsv). (for DNA, experimental)
 
 Developer options (which are not much tested and error handling) are as below:
 

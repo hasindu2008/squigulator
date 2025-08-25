@@ -240,6 +240,40 @@ static void methylate_dna(core_t *core, int32_t ref_len, int32_t ref_pos, int32_
     return;
 }
 
+
+
+void methylate_all_c_dna(core_t *core, int32_t ref_len, int32_t ref_pos, int32_t rlen, char c, char *seq, int seq_i, int tid){
+    if(core->ref->ref_meth[seq_i]){
+        for(int i=0; i<rlen; i++){
+            int rpos = ref_pos+i;
+            if(rpos < ref_len && i<rlen){
+
+                char base = core->ref->ref_seq[seq_i][ref_pos+i];
+                int p = -1;
+                if(c == '+' && base == 'C'){
+                    p = i;
+                } else if (c == '-' && base == 'G') {
+                    p = rlen - i - 2;
+                }
+
+                if(p != -1){
+                    if(!(p>=0 && p<rlen)){
+                        fprintf(stderr,"p: %d, i: %d, rlen: %d, c: %c, ref_pos: %d, ref_len: %d\n",p,i,rlen,c,ref_pos,ref_len);
+                        assert(0);
+                    }
+                    assert(seq[p] == 'C' || seq[p] == 'c');
+                    int methr = rng(&core->rand_meth[tid]) * 254;
+                    if( methr <= core->ref->ref_meth[seq_i][ref_pos+i]){
+                        seq[p] = 'M';
+                    }
+                }
+            }
+        }
+    }
+    return;
+}
+
+
 static char *gen_read_dna(core_t *core, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int tid){
 
     char *seq = NULL;
@@ -274,7 +308,7 @@ static char *gen_read_dna(core_t *core, char **ref_id, int32_t *ref_len, int32_t
     }
 
     if(core->opt.meth_freq){
-        methylate_dna(core, *ref_len, *ref_pos, *rlen, *c, seq, seq_i, tid);
+        methylate_all_c_dna(core, *ref_len, *ref_pos, *rlen, *c, seq, seq_i, tid);
     }
 
     return seq;

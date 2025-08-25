@@ -508,7 +508,7 @@ void fake_uuid(char *read_id, int64_t num){
 
 char *gen_read(core_t *core, char **ref_id, int32_t *ref_len, int32_t *ref_pos, int32_t *rlen, char *c, int8_t rna, int tid);
 int16_t *gen_sig(core_t *core, const char *read, int32_t len, double *offset, double *median_before, int64_t *len_raw_signal, int8_t rna, int tid, aln_t *aln);
-
+void methylate_all_c_dna(core_t *core, int32_t ref_len, int32_t ref_pos, int32_t rlen, char c, char *seq, int seq_i, int tid);
 
 /* process the ith read in the batch db */
 void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
@@ -547,6 +547,9 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i, int tid) {
         strand = '+';
         ref_pos_st = 0;
         ref_pos_end = rlen;
+        if(core->opt.meth_freq){
+            methylate_all_c_dna(core, rlen, ref_pos_st, rlen, strand, seq, core->total_reads+i, tid);
+        }
     } else {
         seq=gen_read(core, &rid, &ref_len, &ref_pos_st, &rlen, &strand, rna, tid);
         ref_pos_end = ref_pos_st+rlen;

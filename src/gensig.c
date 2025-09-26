@@ -76,6 +76,10 @@ void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10, double samp
         ERROR("%s","Error adding sample_frequency attribute");
         exit(EXIT_FAILURE);
     }
+    if (slow5_hdr_add("system_name ", header) < 0){
+        ERROR("%s","Error adding system_name attribute");
+        exit(EXIT_FAILURE);
+    }
 
     //set the run_id attribute to "run_0" for read group 0
     if (slow5_hdr_set("run_id", "run_0", 0, header) < 0){
@@ -123,6 +127,11 @@ void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10, double samp
     sprintf(buffer, "%d", (int)sample_frequency);
     if (slow5_hdr_set("sample_frequency", buffer, 0, header) < 0){
         ERROR("%s","Error setting sample_frequency attribute in read group 0");
+        exit(EXIT_FAILURE);
+    }
+
+    if (slow5_hdr_set("system_name", "PCA000000", 0, header) < 0){
+        ERROR("%s","Error setting system_name attribute in read group 0");
         exit(EXIT_FAILURE);
     }
 

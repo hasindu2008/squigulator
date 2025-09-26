@@ -76,7 +76,7 @@ void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10, double samp
         ERROR("%s","Error adding sample_frequency attribute");
         exit(EXIT_FAILURE);
     }
-    if (slow5_hdr_add("system_name ", header) < 0){
+    if (slow5_hdr_add("system_name", header) < 0){
         ERROR("%s","Error adding system_name attribute");
         exit(EXIT_FAILURE);
     }

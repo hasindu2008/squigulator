@@ -110,7 +110,7 @@ jobs:
     container: ubuntu:20.04
     steps:
     - name: install packages
-      run: apt-get update && apt-get -y install zlib1g-dev git
+      run: apt-get update && apt-get -y install zlib1g-dev git wget make
     - uses: actions/checkout@v2
       with:
         submodules: recursive

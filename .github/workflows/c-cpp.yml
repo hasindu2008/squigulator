@@ -126,7 +126,7 @@ jobs:
       run: apt-get install -y intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic
     - name: Setup Intel oneAPI environment
       run: |
-        source /opt/intel/oneapi/setvars.sh
+        . /opt/intel/oneapi/setvars.sh
         printenv >> $GITHUB_ENV
     - name: build
       run: make CC=icc -j8

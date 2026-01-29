@@ -1,8 +1,6 @@
 # squigulator
 
-*squigulator* is a tool for simulating nanopore raw signal data. It is under development and there could be interface changes and changes to default parameters. Do not hesitate to open an [issue](https://github.com/hasindu2008/squigulator) if you found a bug, something is not clear or for any feature requests.
-
-*squigulator* uses traditional pore models and gaussian noise for simulation. Due to simplicity, simulation would not be perfect, but takes miniscule effort to setup and run. Generating 100,000 reads (~1 Gbases) from human genome using *squigulator* takes ~5 minutes with ~3 GB of RAM (8 CPU threads). For ~30X from the human genome (~9M reads, ~90Gbases) with 32 CPU threads, *squigulator* takes ~1 hour.
+*squigulator* is a tool for simulating nanopore raw signal data. *squigulator* uses traditional pore models and gaussian noise for simulation. Due to simplicity, simulation would not be perfect, but takes miniscule effort to setup and run. Generating 100,000 reads (~1 Gbases) from human genome using *squigulator* takes ~5 minutes with ~3 GB of RAM (8 CPU threads). For ~30X from the human genome (~9M reads, ~90Gbases) with 32 CPU threads, *squigulator* takes ~1 hour.
 
 Reads directly extracted from the reference genome are simulated without any mutations/variants. If you want to have variants in your simulated data, you can first apply a set of variants to the reference using [bcftools](http://www.htslib.org/download/) and use that as the input to the *squigulator*.
 
@@ -31,12 +29,6 @@ Please cite the following in your publications when using *squigulator*:
   publisher={Cold Spring Harbor Laboratory}
 }
 ```
-
-## Background story
-
-*squigulator* started as *ssssim* (Stupidly Simple Signal Simulator). For an experiment, [kisarur](https://github.com/kisarur) wanted some simulated data. After [hiruna72](https://github.com/hiruna72) trying ~3 days to get an existing simulator installed (dependency and compatibility issues), I thought that writing a simple tool from scratch is easier. Indeed, that is when writing BLOW5 files. Writing over complicated formats like FAST5 or POD5 would consume months and I would not think about writing a simulator in the first place then.
-
-After getting the basic *ssssim* implemented in ~8 hours and successfully basecalling using [buttery-eel](https://github.com/Psy-Fer/buttery-eel), I realised that it has worked much better than anticipated. Then, I decided to extend it with different features and options. The result is *sigsim* which was eventually named as *squigulator*, a cool name suggested by [IraDeveson](https://github.com/IraDeveson).
 
 ## Installation
 
@@ -141,3 +133,10 @@ R9 pore-models are from [Nanopolish](https://github.com/jts/nanopolish) and R10 
 Some code snippets have been taken from [Minimap2](https://github.com/lh3/minimap2), [Samtools](http://samtools.sourceforge.net/).
 Kseq from [klib](https://github.com/attractivechaos/klib) is used.
 
+## Background story
+
+*squigulator* started as *ssssim* (Stupidly Simple Signal Simulator). For an experiment, [kisarur](https://github.com/kisarur) wanted some simulated data. After [hiruna72](https://github.com/hiruna72) trying ~3 days to get an existing simulator installed (dependency and compatibility issues), I thought that writing a simple tool from scratch is easier. Indeed, that is when writing BLOW5 files. Writing over complicated formats like FAST5 or POD5 would consume months and I would not think about writing a simulator in the first place then.
+
+After getting the basic *ssssim* implemented in ~8 hours and successfully basecalling using [buttery-eel](https://github.com/Psy-Fer/buttery-eel), I realised that it has worked much better than anticipated. Then, I decided to extend it with different features and options. The result is *sigsim* which was eventually named as *squigulator*, a cool name suggested by [IraDeveson](https://github.com/IraDeveson).
+
+![squigulator](docs/img/cover.png)

@@ -12,9 +12,18 @@ env:
 jobs:
   ubuntu_14:
     name: ubuntu_14
-    runs-on: ubuntu-20.04
-    container: ubuntu:14.04
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu:14.04
+      volumes:
+        - /node20217:/node20217:rw,rshared
+        - /node20217:/__e/node20:ro,rshared
     steps:
+    - name: nodejs
+      run: |
+        apt-get update && apt-get install -y wget xz-utils
+        wget https://unofficial-builds.nodejs.org/download/release/v20.9.0/node-v20.9.0-linux-x64-glibc-217.tar.xz
+        tar -xf node-v20.9.0-linux-x64-glibc-217.tar.xz --strip-components 1 -C /node20217
     - uses: actions/checkout@v2
     - name: install packages
       run: sudo apt-get update && sudo apt-get install -y zlib1g-dev gcc g++ autoconf automake make
@@ -26,9 +35,18 @@ jobs:
       run: make test
   ubuntu_16:
     name: Ubuntu 16
-    runs-on: ubuntu-20.04
-    container: ubuntu:16.04
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu:16.04
+      volumes:
+        - /node20217:/node20217:rw,rshared
+        - /node20217:/__e/node20:ro,rshared
     steps:
+    - name: nodejs
+      run: |
+        apt-get update && apt-get install -y wget xz-utils
+        wget https://unofficial-builds.nodejs.org/download/release/v20.9.0/node-v20.9.0-linux-x64-glibc-217.tar.xz
+        tar -xf node-v20.9.0-linux-x64-glibc-217.tar.xz --strip-components 1 -C /node20217
     - uses: actions/checkout@v2
     - name: install packages
       run: apt-get update && apt-get install -y zlib1g-dev gcc g++ autoconf automake make valgrind
@@ -40,9 +58,18 @@ jobs:
       run: scripts/test.sh mem
   ubuntu_18:
     name: Ubuntu 18
-    runs-on: ubuntu-20.04
-    container: ubuntu:18.04
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu:18.04
+      volumes:
+        - /node20217:/node20217:rw,rshared
+        - /node20217:/__e/node20:ro,rshared
     steps:
+    - name: nodejs
+      run: |
+        apt-get update && apt-get install -y wget xz-utils
+        wget https://unofficial-builds.nodejs.org/download/release/v20.9.0/node-v20.9.0-linux-x64-glibc-217.tar.xz
+        tar -xf node-v20.9.0-linux-x64-glibc-217.tar.xz --strip-components 1 -C /node20217
     - uses: actions/checkout@v2
     - name: install packages
       run: apt-get update && apt-get install -y zlib1g-dev  gcc g++ autoconf automake make
@@ -52,11 +79,12 @@ jobs:
       run: make test
   ubuntu_20:
     name: Ubuntu 20
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
+    container: ubuntu:20.04
     steps:
     - uses: actions/checkout@v2
     - name: install packages
-      run: sudo apt-get update && sudo apt-get install zlib1g-dev
+      run: apt-get update && apt-get -y install zlib1g-dev git gcc g++ make clang
     - name: build-gcc
       run: make -j8
     - name: test-gcc
@@ -78,8 +106,11 @@ jobs:
       run: make test
   ubuntu_20_icc:
     name: Ubuntu 20 icc
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
+    container: ubuntu:20.04
     steps:
+    - name: install packages
+      run: apt-get update && apt-get -y install zlib1g-dev git wget make gnupg gcc g++
     - uses: actions/checkout@v2
       with:
         submodules: recursive
@@ -87,15 +118,15 @@ jobs:
       timeout-minutes: 1
       run: |
         wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
-        sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
+        apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
         rm GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB
-        echo "deb https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
-        sudo apt-get update
+        echo "deb https://apt.repos.intel.com/oneapi all main" | tee /etc/apt/sources.list.d/oneAPI.list
+        apt-get update
     - name: install packages
-      run: sudo apt-get install -y zlib1g-dev libzstd-dev intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic
+      run: apt-get install -y intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic
     - name: Setup Intel oneAPI environment
       run: |
-        source /opt/intel/oneapi/setvars.sh
+        . /opt/intel/oneapi/setvars.sh
         printenv >> $GITHUB_ENV
     - name: build
       run: make CC=icc -j8
@@ -112,18 +143,18 @@ jobs:
       run: make -j8
     - name: test
       run: make test
-  os_x_12:
-    name: OSX 12
-    runs-on: macos-12
+  os_x_15:
+    name: OSX 15
+    runs-on: macos-15
     steps:
     - uses: actions/checkout@v2
     - name: build
       run: make -j8
     - name: test
       run: make test
-  os_x_13:
-    name: OSX 13
-    runs-on: macos-13
+  os_x_15_intel:
+    name: OSX 15 Intel
+    runs-on: macos-15-intel
     steps:
     - uses: actions/checkout@v2
     - name: build

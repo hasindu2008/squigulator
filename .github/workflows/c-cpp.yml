@@ -123,7 +123,7 @@ jobs:
         echo "deb https://apt.repos.intel.com/oneapi all main" | tee /etc/apt/sources.list.d/oneAPI.list
         apt-get update
     - name: install packages
-      run: apt-get install intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic
+      run: apt-get install -y intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic
     - name: Setup Intel oneAPI environment
       run: |
         source /opt/intel/oneapi/setvars.sh

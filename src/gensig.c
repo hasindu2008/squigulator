@@ -46,12 +46,22 @@ void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10, double samp
         ERROR("%s","Error adding run_id attribute");
         exit(EXIT_FAILURE);
     }
+    //add another header group attribute called protocol_run_id
+    if (slow5_hdr_add("protocol_run_id", header) < 0){
+        ERROR("%s","Error adding protocol_run_id attribute");
+        exit(EXIT_FAILURE);
+    }
     //add another header group attribute called asic_id
     if (slow5_hdr_add("asic_id", header) < 0){
         ERROR("%s","Error adding asic_id attribute");
         exit(EXIT_FAILURE);
     }
-    //add another header group attribute called asic_id
+    //add another header group attribute called protocol_start_time
+    if (slow5_hdr_add("protocol_start_time", header) < 0){
+        ERROR("%s","Error adding protocol_start_time attribute");
+        exit(EXIT_FAILURE);
+    }
+    //add another header group attribute called exp_start_time
     if (slow5_hdr_add("exp_start_time", header) < 0){
         ERROR("%s","Error adding asic_id attribute");
         exit(EXIT_FAILURE);
@@ -94,6 +104,11 @@ void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10, double samp
         ERROR("%s","Error setting run_id attribute in read group 0");
         exit(EXIT_FAILURE);
     }
+    //set the protocol_run_id attribute to "protocol_run_0" for read group 0
+    if (slow5_hdr_set("protocol_run_id", "protocol_run_0", 0, header) < 0){
+        ERROR("%s","Error setting protocol_run_id attribute in read group 0");
+        exit(EXIT_FAILURE);
+    }
     //set the asic_id attribute to "asic_0" for read group 0
     if (slow5_hdr_set("asic_id", "asic_id_0", 0, header) < 0){
         ERROR("%s","Error setting asic_id attribute in read group 0");
@@ -102,6 +117,11 @@ void set_header_attributes(slow5_file_t *sp, int8_t rna, int8_t r10, double samp
     //set the exp_start_time attribute to "2022-07-20T00:00:00Z" for read group 0
     if (slow5_hdr_set("exp_start_time", "2022-07-20T00:00:00Z", 0, header) < 0){
         ERROR("%s","Error setting exp_start_time attribute in read group 0");
+        exit(EXIT_FAILURE);
+    }
+    //set the protocol_start_time attribute to "2022-07-20T00:00:00Z" for read group 0
+    if (slow5_hdr_set("protocol_start_time", "2022-07-20T00:00:00Z", 0, header) < 0){
+        ERROR("%s","Error setting protocol_start_time attribute in read group 0");
         exit(EXIT_FAILURE);
     }
     //set the flow_cell_id attribute to "FAN00000" for read group 0
